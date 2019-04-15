@@ -1,5 +1,5 @@
 # ESP8266GameOn
-Game for an ESP8266 with SSD1306 and buttons.
+Gaming on an ESP8266 with SSD1306 and buttons.
 
 Hardware was originally inspired by the BSides Cape Town 2016 Badge and original source code is here 
 
@@ -15,6 +15,7 @@ NCurses - Most systems can install this with a 'sudo apt-get install ncurses-dev
 
 For Windows console build you will need cmake as well as Visual Studio and optionally Visual Studio Code.
 Console - Should require nothing additional.
+
 SDL - I found https://github.com/Microsoft/vcpkg invaluable, the example install is even for SDL2.
 
 For emscipten, there is only a build command currently, but if there's more demand I can clean this up.
