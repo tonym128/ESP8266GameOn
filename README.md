@@ -28,3 +28,10 @@ The hope is that people can fork this repo and start writing their own games. Yo
 You can change the mygame.cpp and mygame.h, to write your own game inside the 'framework'
 
 I imagined turning it into a library, but I haven't thought of a clean way to do that and still maintain the cross platform build files, which I hope I can one day turn into and online IDE for creating and playing the games, with the ability to use backing hardware to play it on the a physical device you made.
+
+# Hardware I've used.
+I have used some generic ESP8266-12E's but my most recent device is a Wesmos R1 Mini - https://wiki.wemos.cc/products:d1:d1_mini
+With a SSD1306 screen, 128x64 Mono single colour 4pin - https://www.banggood.com/0_96-Inch-4Pin-White-IIC-I2C-OLED-Display-Module-12864-LED-For-Arduino-p-958196.html?rmmds=search&cur_warehouse=CN
+And for the input I've used staples, with a 1 Mohm (Million) Resistor between the Output Pin to a staple, another staple across from it with a diode, to a Analog Input rail, which switched between in the input code (To Be Detailed Later)
+
+There is the ability to run audio as well, which I will hopefully complete one day soon on my prototype badge, but the code has been partially tested on a few projects now, as per the instructions on the ESP8266Audio repo.
