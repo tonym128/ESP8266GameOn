@@ -31,7 +31,9 @@ I imagined turning it into a library, but I haven't thought of a clean way to do
 
 # Hardware I've used.
 I have used some generic ESP8266-12E's but my most recent device is a Wesmos R1 Mini - https://wiki.wemos.cc/products:d1:d1_mini
+
 With a SSD1306 screen, 128x64 Mono single colour 4pin - https://www.banggood.com/0_96-Inch-4Pin-White-IIC-I2C-OLED-Display-Module-12864-LED-For-Arduino-p-958196.html?rmmds=search&cur_warehouse=CN
+
 And for the input I've used staples, with a 1 Mohm (Million) Resistor between the Output Pin to a staple, another staple across from it with a diode, to a Analog Input rail, which switched between in the input code (To Be Detailed Later)
 
 There is the ability to run audio as well, which I will hopefully complete one day soon on my prototype badge, but the code has been partially tested on a few projects now, as per the instructions on the ESP8266Audio repo.
