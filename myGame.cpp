@@ -1,735 +1,658 @@
 #include "myGame.hpp"
 
-GameState gameState;
+struct Player1Keys {
+	bool up = false;
+	bool down = false;
+	bool right = false;
+	bool left = false;
+	bool shoot = false;
+	bool turbo = false;
+	bool brake = false;
+	bool accelerate = false;
+};
 
-void processInput(GameState *gameState, byte buttonVals)
-{
-	gameState->p1keys.up = processKey(buttonVals, P1_Top);
-	gameState->p1keys.down = processKey(buttonVals, P1_Bottom);
-	gameState->p1keys.left = processKey(buttonVals, P1_Left);
-	gameState->p1keys.right = processKey(buttonVals, P1_Right);
-	gameState->p1keys.a = processKey(buttonVals, P2_Right);
-	gameState->p1keys.b = processKey(buttonVals, P2_Left);
+struct BufferedDrawObject {
+	bool draw = false;
+	Dimensions dim;
+	bool* object;
+};
 
-	// This is only monitoring for a keypress on false
-	if (processKey(buttonVals, P2_Top))
-	{
-		gameState->running = false;
-		gameState->restart = true;
+struct Car {
+	unsigned char speed = 0;
+	unsigned char y = 0;
+	unsigned char lane = 0;
+	bool visible = 0;
+	int distance = 0;
+	int lastdistance = 0;
+};
+
+struct GameStateDrive {
+	const int MaxOffRoadSpeed = 25;
+	const int maxRoadSpeed = 70;
+	const int crashSpeed = 0;
+	const int udpateSpeed = 30;
+
+	bool win = false;
+	int level = 1;
+	int stageTime = 60;
+	int stageDistance = 800;
+	int maxCars = 1;
+
+	int flagCount = 0;
+	int flagFrameCounter = 0;
+	bool flagUp = true;
+
+	Car* cars = new Car[5];
+
+	int scene = 0;
+
+	int lastscene = 0;
+
+	int frameCounter = 0;
+	int distance = 0;
+	int lastdistance = 0;
+	int turnOffset = 0;
+
+	bool turning = false;
+	bool turningLeft = false;
+	int turnDepth = 0;
+
+	int carSpeed = 0;
+	int roadSpeed = 0;
+	bool evenLines = true;
+	Player1Keys p1keys;
+	Dimensions playerCar;
+	bool collision = false;
+	bool running = true;
+	bool restart = false;
+} gameStateDrive;
+
+void processInput(GameStateDrive* gameStateDrive, byte buttonVals) {
+	gameStateDrive->p1keys.up = processKey(buttonVals, P1_Top);
+	gameStateDrive->p1keys.down = processKey(buttonVals, P1_Bottom);
+	gameStateDrive->p1keys.left = processKey(buttonVals, P1_Left);
+	gameStateDrive->p1keys.right = processKey(buttonVals, P1_Right);
+	gameStateDrive->p1keys.brake = processKey(buttonVals, P2_Left) || processKey(buttonVals, P1_Top);
+	gameStateDrive->p1keys.accelerate = processKey(buttonVals, P2_Right) || processKey(buttonVals, P1_Bottom);
+
+	if (processKey(buttonVals, P2_Top)) {
+		gameStateDrive->running = false;
+		gameStateDrive->restart = true;
 	}
 }
 
-void resetGameState(GameState *gameState, ScreenBuff *screenBuff)
-{
-	srand((unsigned int)time(0));
-	gameState->win = false;
-
-	gameState->player1.collision = false;
-	gameState->player1.inPlay = true;
-
-	gameState->score = 0;
-	gameState->level = 1;
-
-	gameState->player1.dim.width = 10;
-	gameState->player1.dim.height = 10;
+void initCar(GameStateDrive* gameStateDrive, ScreenBuff* screenBuff, Car* car) {
+	car->y = screenBuff->HEIGHT / 3;
+	car->lane = rand() % 3;
+	car->speed = rand() % gameStateDrive->maxRoadSpeed / 4;
+	car->distance = gameStateDrive->distance;
+	car->lastdistance = gameStateDrive->distance;
 }
 
-void startLevel(GameState *gameState, ScreenBuff *screenBuff)
-{
-	gameState->win = false;
-	gameState->player1.collision = false;
-
-	// Initialise player
-	gameState->player1.direction = 0;
-	gameState->player1.rotation = 0;
-	gameState->player1.thrust = FLOAT_TO_FIXP(0.05 + gameState->level / (double)100);
-	gameState->player1.dim.x = screenBuff->WIDTH / 2;
-	gameState->player1.dim.y = screenBuff->HEIGHT / 2;
-
-	gameState->player1.fixX = INT_TO_FIXP(gameState->player1.dim.x);
-	gameState->player1.fixY = INT_TO_FIXP(gameState->player1.dim.y);
-
-	gameState->player1.movX = INT_TO_FIXP(0);
-	gameState->player1.movY = INT_TO_FIXP(0);
-
-	// No weapons fire
-	for (int i = 0; i < FIRECOUNT; i++)
-	{
-		gameState->player1.fire[i].life = 0;
+bool updateDrive(GameStateDrive* gameStateDrive, ScreenBuff* screenBuff) {
+	gameStateDrive->frameCounter += 1;
+	if (gameStateDrive->playerCar.x < screenBuff->WIDTH / 5 || gameStateDrive->playerCar.x + gameStateDrive->playerCar.width > screenBuff->WIDTH - screenBuff->WIDTH / 5) {
+		if (gameStateDrive->MaxOffRoadSpeed < gameStateDrive->carSpeed) gameStateDrive->carSpeed -= 2;
 	}
 
-	// 1 Asteroid per stage
-	for (int i = 0; i < ASTEROIDS; i++)
-	{
-		gameState->asteroids[i].dim.width = 0;
-		gameState->asteroids[i].dim.height = 0;
+	// Collision
+	if (gameStateDrive->collision) {
+		gameStateDrive->carSpeed = 0;
+		gameStateDrive->collision = false;
 	}
 
-	for (int i = 0; i < gameState->level; i++)
-	{
-		int size = 20;
-		gameState->asteroids[i].speed = FLOAT_TO_FIXP((double)(rand() % 10) / (double)10);
-		gameState->asteroids[i].size = FLOAT_TO_FIXP(size);
-		gameState->asteroids[i].direction = INT_TO_FIXP(rand() % 360);
-		gameState->asteroids[i].rotateAmount = rand() % 4000;
-		gameState->asteroids[i].dim.width = size;
-		gameState->asteroids[i].dim.height = size;
-
-		gameState->asteroids[i].dim.x = rand() % 2 == 0 ? 0 : screenBuff->WIDTH;
-		gameState->asteroids[i].dim.y = rand() % 2 == 0 ? 0 : screenBuff->HEIGHT;
-		gameState->asteroids[i].fixX = INT_TO_FIXP(gameState->asteroids[i].dim.x);
-		gameState->asteroids[i].fixY = INT_TO_FIXP(gameState->asteroids[i].dim.y);
+	if (gameStateDrive->p1keys.accelerate) {
+		// Accelerating
+		gameStateDrive->carSpeed += 1;
 	}
-}
+	else {
+		// Organic slow down
+		gameStateDrive->carSpeed -= gameStateDrive->frameCounter % 20 == 0 ? 1 : 0;
+	}
 
-bool updateScroller(GameState *gameState, ScreenBuff *screenBuff)
-{
+	gameStateDrive->carSpeed -= gameStateDrive->p1keys.brake ? 1 : 0;
+	if (gameStateDrive->carSpeed < 0) gameStateDrive->carSpeed = 0;
+	if (gameStateDrive->carSpeed > gameStateDrive->maxRoadSpeed) gameStateDrive->carSpeed = gameStateDrive->maxRoadSpeed;
+
+	if (gameStateDrive->p1keys.left) {
+		gameStateDrive->playerCar.x -= 1;
+	}
+	if (gameStateDrive->p1keys.right) {
+		gameStateDrive->playerCar.x += 1;
+	}
+
+	// Randomly Start Turning
+	if (!gameStateDrive->turning) {
+		gameStateDrive->turning = rand() % 100 == 0;
+		if (gameStateDrive->turning) {
+			gameStateDrive->turningLeft = !gameStateDrive->turningLeft;
+			gameStateDrive->turnDepth = rand() % 100;
+		}
+	}
+
+	// Setup Road speed and distance travelled.
+	gameStateDrive->roadSpeed = gameStateDrive->maxRoadSpeed + 1 - gameStateDrive->carSpeed;
+	gameStateDrive->distance += gameStateDrive->carSpeed / 8;
+
+	// Do turning logic
+	if (gameStateDrive->turning) {
+		if (gameStateDrive->distance - gameStateDrive->lastdistance >= gameStateDrive->udpateSpeed) {
+			// Pull Car
+			gameStateDrive->playerCar.x += gameStateDrive->turningLeft ? +1 : -1;
+
+			// Going up
+			if (gameStateDrive->turnDepth > 0) {
+				gameStateDrive->turnOffset += gameStateDrive->turningLeft ? -1 : +1;
+				gameStateDrive->turnDepth -= 1;
+			}
+
+			// Going down / finished
+			if (gameStateDrive->turnDepth == 0) {
+				if (gameStateDrive->turnOffset == 0) {
+					gameStateDrive->turning = false;
+				}
+				else {
+					gameStateDrive->turnOffset += gameStateDrive->turningLeft ? +1 : -1;
+				}
+			}
+
+			if (gameStateDrive->turnOffset < -47) { gameStateDrive->turnOffset = -47; }
+			if (gameStateDrive->turnOffset > 47) { gameStateDrive->turnOffset = 47; }
+		}
+	}
+
+	if (gameStateDrive->playerCar.x < 0) {
+		gameStateDrive->playerCar.x = 0;
+	} else if (gameStateDrive->playerCar.x + gameStateDrive->playerCar.width > screenBuff->WIDTH) {
+		gameStateDrive->playerCar.x = screenBuff->WIDTH - gameStateDrive->playerCar.width;
+	}
+
+	if (gameStateDrive->distance - gameStateDrive->lastdistance >= gameStateDrive->udpateSpeed) {
+		gameStateDrive->evenLines = !gameStateDrive->evenLines;
+		gameStateDrive->lastdistance = gameStateDrive->distance;
+	}
+
+	// initialise / update cars
+	for (int i = 0; i < gameStateDrive->maxCars; i++) {
+		if (gameStateDrive->cars[i].y == 0 || gameStateDrive->cars[i].y == screenBuff->HEIGHT) {
+			initCar(gameStateDrive, screenBuff, &gameStateDrive->cars[i]);
+		}
+		else {
+			gameStateDrive->cars[i].distance += gameStateDrive->cars[i].speed;
+
+			if (gameStateDrive->cars[i].distance - gameStateDrive->distance >= gameStateDrive->udpateSpeed) {
+				gameStateDrive->cars[i].distance = gameStateDrive->distance;
+				gameStateDrive->cars[i].y -= 1;
+			}
+			if (gameStateDrive->distance - gameStateDrive->cars[i].distance >= gameStateDrive->udpateSpeed) {
+				gameStateDrive->cars[i].distance = gameStateDrive->distance;
+				gameStateDrive->cars[i].y += 1;
+			}
+		}
+	}
+
+	// If we have run out of time
+	if (checkTime(gameStateDrive->stageTime)) {
+		gameStateDrive->win = false;
+		return false;
+	}
+	// If we have hit the required distance
+	if (gameStateDrive->stageDistance - gameStateDrive->distance / 8 < 0)
+	{
+		gameStateDrive->win = true;
+		return false;
+	}
+
 	return true;
 }
 
-bool displayScroller(GameState *gameState, ScreenBuff *screenBuff)
-{
-	gameState->frameCounter += 1;
-	char scrollerText[9][17];
-	strcpy(scrollerText[0], "The longest");
-	strcpy(scrollerText[1], "journey starts");
-	strcpy(scrollerText[2], "with a single");
-	strcpy(scrollerText[3], "step.");
-	strcpy(scrollerText[4], "");
-	strcpy(scrollerText[5], "  Or Asteroid  ");
-	strcpy(scrollerText[6], "   Good Luck!  ");
-	strcpy(scrollerText[7], "");
-	strcpy(scrollerText[8], " -= Asteroid =- ");
+bool drawWavingFlag(GameStateDrive* gameStateDrive, ScreenBuff* screenBuff) {
+	gameStateDrive->frameCounter += 1;
 
-	return drawScroller(screenBuff, gameState->frameCounter, scrollerText);
+	displayClear(screenBuff, 0, 0);
+	Dimensions dimFlag;
+	dimFlag.x = 5;
+	dimFlag.y = 5;
+	dimFlag.height = flag_height;
+	dimFlag.width = flag_width;
+	
+	if (gameStateDrive->flagCount == 0) {
+		gameStateDrive->flagUp = true;
+
+		if (gameStateDrive->flagFrameCounter == 4) {
+			gameStateDrive->flagCount--;
+			gameStateDrive->flagFrameCounter = 0;
+		}
+		else {
+			gameStateDrive->flagFrameCounter++;
+		}
+	}
+	else if (gameStateDrive->flagCount == -4) {
+		gameStateDrive->flagUp = false;
+
+		if (gameStateDrive->flagFrameCounter == 4) {
+			gameStateDrive->flagCount++;
+			gameStateDrive->flagFrameCounter = 0;
+		}
+		else {
+			gameStateDrive->flagFrameCounter++;
+		}
+	}
+	else
+	{
+		gameStateDrive->flagFrameCounter = gameStateDrive->flagFrameCounter == 0 ? 0 : 1;
+		if (gameStateDrive->flagFrameCounter == 0) gameStateDrive->flagCount += gameStateDrive->flagUp ? -1 : +1;
+	}
+
+	drawObjectWavy(screenBuff, dimFlag, -4, 0, gameStateDrive->flagCount, gameStateDrive->flagFrameCounter, gameStateDrive->flagUp, flag);
+
+	return !checkTime(3);
 }
 
-bool updateOutroScroller(GameState *gameState, ScreenBuff *screenBuff)
-{
+bool updateDriveScroller(GameStateDrive* gameStateDrive, ScreenBuff* screenBuff) {
 	return true;
 }
 
-bool displayOutroScroller(GameState *gameState, ScreenBuff *screenBuff)
-{
-	gameState->frameCounter += 1;
+bool displayDriveScroller(GameStateDrive* gameStateDrive, ScreenBuff* screenBuff) {
+	gameStateDrive->frameCounter += 1;
 	char scrollerText[9][17];
-	strcpy(scrollerText[0], "Well done on");
-	strcpy(scrollerText[1], "saving earth");
-	strcpy(scrollerText[2], "Your mission");
-	strcpy(scrollerText[3], "is done.");
-	strcpy(scrollerText[4], "Get back to");
-	strcpy(scrollerText[5], "earth & get some");
-	strcpy(scrollerText[6], "R & R");
-	strcpy(scrollerText[7], "                ");
-	strcpy(scrollerText[8], " -= Congrats =- ");
+	strcpy(scrollerText[0],"You made it to");
+	strcpy(scrollerText[1],"Las Vegas,");
+	strcpy(scrollerText[2],"America,");
+	strcpy(scrollerText[3],"Hell Yeah!");
+	strcpy(scrollerText[4],"Now get to the");
+	strcpy(scrollerText[5],"Hotel for some");
+	strcpy(scrollerText[6],"rest");
+	strcpy(scrollerText[7],"");
+	strcpy(scrollerText[8]," -= Road Rush =-");
 
-	return drawScroller(screenBuff, gameState->frameCounter, scrollerText);
+	return drawScroller(screenBuff, gameStateDrive->frameCounter, scrollerText);
 }
 
-void updateGame(GameState *gameState, ScreenBuff *screenBuff)
-{
-	// If there's no Asteroids left ... WIN!
-	gameState->win = true;
-	for (int i = 0; i < ASTEROIDS; i++)
-	{
-		if (gameState->asteroids[i].dim.height != 0)
+bool displayDriveOutroScroller(GameStateDrive* gameStateDrive, ScreenBuff* screenBuff) {
+	gameStateDrive->frameCounter += 1;
+	char scrollerText[9][17];
+	strcpy(scrollerText[0],"Hotel mission");
+	strcpy(scrollerText[1],"accomplished.");
+	strcpy(scrollerText[2],"");
+	strcpy(scrollerText[3],"Get some rest");
+	strcpy(scrollerText[4],"then head out to");
+	strcpy(scrollerText[5],"the conference!");
+	strcpy(scrollerText[6],"");
+	strcpy(scrollerText[7],"");
+	strcpy(scrollerText[8]," -= Winner! =-");
+
+	return drawScroller(screenBuff, gameStateDrive->frameCounter, scrollerText);
+}
+
+bool displayLevelSlider(GameStateDrive* gameStateDrive, ScreenBuff* screenBuff) {
+	gameStateDrive->frameCounter++;
+
+	displayClear(screenBuff, 0, 0);
+	char fps[16];
+	sprintf(fps, "Level %i", gameStateDrive->level);
+	for (int i = 0; i < static_cast<int>(strlen(fps)); i++) {
+		drawCharacter(screenBuff, fps[i], 40 + 8 * i, 10);
+	}
+
+	// Sliders
+	int counter = 0;
+	for (int i = gameStateDrive->frameCounter; i > 0; i--) {
+		if (counter < screenBuff->WIDTH / 2)
 		{
-			gameState->win = false;
+			counter++;
+			screenBuff->consoleBuffer[screenBuff->WIDTH * 5 + i] = 1;
+			screenBuff->consoleBuffer[screenBuff->WIDTH * 20 - i] = 1;
 		}
 	}
 
-	if (gameState->win)
-	{
-		gameState->level++;
+	return !checkTime(2);
+}
+
+bool displayWinLose(GameStateDrive* gameStateDrive, ScreenBuff* screenBuff) {
+	char fps[16];
+	if (gameStateDrive->win) {
+		sprintf(fps, "YOU WIN!");
+		for (int i = 0; i < static_cast<int>(strlen(fps)); i++) {
+			drawCharacter(screenBuff, fps[i], 32 + 8 * i, 30);
+		}
 	}
-
-	// Proces player input
-	if (gameState->p1keys.left)
-	{
-		gameState->player1.rotation -= 0.1;
-		if (gameState->player1.rotation < 0)
-			gameState->player1.rotation = 6;
-		gameState->player1.direction = FLOAT_TO_FIXP(gameState->player1.rotation * 60);
-	}
-
-	if (gameState->p1keys.right)
-	{
-		gameState->player1.rotation += 0.1;
-		if (gameState->player1.rotation > 6)
-			gameState->player1.rotation = 0;
-		gameState->player1.direction = FLOAT_TO_FIXP(gameState->player1.rotation * 60);
-	}
-
-	if (gameState->p1keys.up || gameState->p1keys.b)
-	{
-		gameState->player1.movX += xVec(gameState->player1.thrust, gameState->player1.direction);
-		gameState->player1.movY += yVec(gameState->player1.thrust, gameState->player1.direction);
-	}
-
-	if (gameState->p1keys.a)
-	{
-		if (gameState->player1.firetimeout < getTimeInMillis())
-		{
-			for (int i = 0; i < FIRECOUNT; i++)
-			{
-				if (gameState->player1.fire[i].life > 0)
-					continue;
-				gameState->player1.firetimeout = getTimeInMillis() + FIREPACING;
-				gameState->player1.fire[i].dim.height = 1;
-				gameState->player1.fire[i].dim.width = 1;
-				gameState->player1.fire[i].dim.x = gameState->player1.dim.x + gameState->player1.dim.width / 2;
-				gameState->player1.fire[i].dim.y = gameState->player1.dim.y + gameState->player1.dim.height / 2;
-				gameState->player1.fire[i].fixX = gameState->player1.fixX + INT_TO_FIXP(gameState->player1.dim.width / 2);
-				gameState->player1.fire[i].fixY = gameState->player1.fixY + INT_TO_FIXP(gameState->player1.dim.height / 2);
-				gameState->player1.fire[i].movX = gameState->player1.movX;
-				gameState->player1.fire[i].movY = gameState->player1.movY;
-
-				gameState->player1.fire[i].movX += xVec(FIREPOWER, gameState->player1.direction);
-				gameState->player1.fire[i].movY += yVec(FIREPOWER, gameState->player1.direction);
-
-				gameState->player1.fire[i].life = INT_TO_FIXP(1000);
-				break;
-			}
+	else {
+		sprintf(fps, "GAME OVER");
+		for (int i = 0; i < static_cast<int>(strlen(fps)); i++) {
+			drawCharacter(screenBuff, fps[i], 32 + 8 * i, 30);
 		}
 	}
 
-	// Update ship position
-	gameState->player1.fixX += gameState->player1.movX;
-	gameState->player1.fixY += gameState->player1.movY;
+	return !checkTime(2);
+}
 
-	if (gameState->player1.fixX < INT_TO_FIXP(0))
-		gameState->player1.fixX += INT_TO_FIXP(screenBuff->WIDTH);
-	if (gameState->player1.fixX > INT_TO_FIXP(screenBuff->WIDTH))
-		gameState->player1.fixX -= INT_TO_FIXP(screenBuff->WIDTH);
+void displayDrive(GameStateDrive* gameStateDrive, ScreenBuff* screenBuff) {
+	displayClear(screenBuff, 0, 0);
 
-	if (gameState->player1.fixY < INT_TO_FIXP(0))
-		gameState->player1.fixY += INT_TO_FIXP(screenBuff->HEIGHT);
-	if (gameState->player1.fixY > INT_TO_FIXP(screenBuff->HEIGHT))
-		gameState->player1.fixY -= INT_TO_FIXP(screenBuff->HEIGHT);
+	int width = screenBuff->WIDTH / 15;
+	int startY = screenBuff->HEIGHT / 3;
 
-	gameState->player1.dim.x = FIXP_TO_INT(gameState->player1.fixX) % screenBuff->WIDTH;
-	gameState->player1.dim.y = FIXP_TO_INT(gameState->player1.fixY) % screenBuff->HEIGHT;
+	int height = 1;
+	int j = 0;
+	int y = startY;
+	Dimensions dim;
 
-	// Update the Asteroids
-	for (int i = 0; i < ASTEROIDS; i++)
-	{
-		if (gameState->asteroids[i].dim.width)
-		{
-			gameState->asteroids[i].fixX += xVec(gameState->asteroids[i].speed, gameState->asteroids[i].direction);
-			gameState->asteroids[i].fixY += yVec(gameState->asteroids[i].speed, gameState->asteroids[i].direction);
+	while (y < screenBuff->HEIGHT) {
+		// Draw side of road
+		dim.x = 0;
+		dim.y = y;
+		dim.height = height;
+		dim.width = screenBuff->WIDTH;
 
-			if (gameState->asteroids[i].fixX < INT_TO_FIXP(0))
-				gameState->asteroids[i].fixX += INT_TO_FIXP(screenBuff->WIDTH);
-			if (gameState->asteroids[i].fixX > INT_TO_FIXP(screenBuff->WIDTH))
-				gameState->asteroids[i].fixX -= INT_TO_FIXP(screenBuff->WIDTH);
+		drawBlock(screenBuff, dim, j % 2 == 0 ? gameStateDrive->evenLines : !gameStateDrive->evenLines);
 
-			if (gameState->asteroids[i].fixY < INT_TO_FIXP(0))
-				gameState->asteroids[i].fixY += INT_TO_FIXP(screenBuff->HEIGHT);
-			if (gameState->asteroids[i].fixY > INT_TO_FIXP(screenBuff->HEIGHT))
-				gameState->asteroids[i].fixY -= INT_TO_FIXP(screenBuff->HEIGHT);
+		y += height + 1;
+		j += 1;
 
-			gameState->asteroids[i].dim.x = FIXP_TO_INT(gameState->asteroids[i].fixX) % screenBuff->WIDTH;
-			gameState->asteroids[i].dim.y = FIXP_TO_INT(gameState->asteroids[i].fixY) % screenBuff->HEIGHT;
-			gameState->asteroids[i].rotation = ((double)getTimeInMillis()) / gameState->asteroids[i].rotateAmount;
-		}
+		if (j % 5 == 0) height += 1;
 	}
 
-	// Update the weapons
-	for (int i = 0; i < FIRECOUNT; i++)
-	{
-		if (gameState->player1.fire[i].life <= 0)
-			continue;
+	// Draw the road
+	y = screenBuff->HEIGHT / 3;
+	j = 0;
 
-		gameState->player1.fire[i].fixX += gameState->player1.fire[i].movX;
-		gameState->player1.fire[i].fixY += gameState->player1.fire[i].movY;
+	int turnOffset = gameStateDrive->turnOffset;
+	int fullHeight = screenBuff->HEIGHT - (screenBuff->HEIGHT / 3);
+	BufferedDrawObject bufDraw[5];
 
-		if (gameState->player1.fire[i].fixX < INT_TO_FIXP(0))
-			gameState->player1.fire[i].fixX += INT_TO_FIXP(screenBuff->WIDTH);
-		if (gameState->player1.fire[i].fixX > INT_TO_FIXP(screenBuff->WIDTH))
-			gameState->player1.fire[i].fixX -= INT_TO_FIXP(screenBuff->WIDTH);
+	while (y < screenBuff->HEIGHT) {
+		// Draw Off Road
+		dim.x = (screenBuff->WIDTH  - width - y) /2 - 2 + turnOffset;
+		dim.y = y;
+		dim.height = 0;
+		dim.width = width + y + 4;
+		drawBlock(screenBuff, dim, y % 2 ? gameStateDrive->evenLines : !gameStateDrive->evenLines);
+	
+		// Draw Road
+		dim.x += 2;
+		dim.width -= 4;
+		drawBlock(screenBuff, dim, true);
 
-		if (gameState->player1.fire[i].fixY < INT_TO_FIXP(0))
-			gameState->player1.fire[i].fixY += INT_TO_FIXP(screenBuff->HEIGHT);
-		if (gameState->player1.fire[i].fixY > INT_TO_FIXP(screenBuff->HEIGHT))
-			gameState->player1.fire[i].fixY -= INT_TO_FIXP(screenBuff->HEIGHT);
+		// Draw Cars
+		for (int i = 0; i < gameStateDrive->maxCars; i++) {
+			// If this is the right line to draw the car
+			if (gameStateDrive->cars[i].y == y) {
+				Dimensions dimCar;
+				dimCar.x = 0;
+				dimCar.height = 0;
+				dimCar.width = 0;
 
-		gameState->player1.fire[i].dim.x = FIXP_TO_INT(gameState->player1.fire[i].fixX) % screenBuff->WIDTH;
-		gameState->player1.fire[i].dim.y = FIXP_TO_INT(gameState->player1.fire[i].fixY) % screenBuff->HEIGHT;
+				bool* car = (bool*)playerCar;
+				dimCar.y = gameStateDrive->cars[i].y;
 
-		gameState->player1.fire[i].life -= getCurrentFPS();
-	}
+				// And the car is on screen
+				if (dimCar.y > 0 && dimCar.y < screenBuff->HEIGHT) {
+					dimCar.x = dim.x;
 
-	// Collision detect ship vs Asteroids
-	bool rotShip[100];
-	bool rotAst[400];
-	rotateObject(gameState->player1.dim, gameState->player1.rotation, 1, Ship10x10, rotShip);
-	for (int i = 0; i < ASTEROIDS; i++)
-	{
-		if (gameState->player1.collision)
-			break;
-		// If it's a valid asteroid
-		if (gameState->asteroids[i].dim.width)
-		{
-			// If we have a collision on the bounding box
-			if (rectCollisionCheck(gameState->player1.dim, gameState->asteroids[i].dim))
-			{
-				//Do a mask collision check
-				switch (gameState->asteroids[i].dim.height)
-				{
-				case 20:
-					rotateObject(gameState->asteroids[i].dim, gameState->asteroids[i].rotation, 1, Asteroid20x20, rotAst);
-					break;
-				case 10:
-					rotateObject(gameState->asteroids[i].dim, gameState->asteroids[i].rotation, 1, Asteroid10x10, rotAst);
-					break;
-				case 5:
-					rotateObject(gameState->asteroids[i].dim, gameState->asteroids[i].rotation, 1, Asteroid5x5, rotAst);
-					break;
-				}
-
-				if (maskCollisionCheck(gameState->player1.dim, gameState->asteroids[i].dim, rotShip, rotAst))
-				{
-					gameState->player1.collision = true;
-				}
-			}
-		}
-	}
-
-	// Collider Check
-	if (gameState->player1.collision)
-	{
-		gameState->player1.inPlay = false;
-		gameState->scene = 5;
-		if (gameState->score > gameState->hiScore) {
-			gameState->hiScore = gameState->score;
-		}
-	}
-
-	// Collision check bullets vs Asteroids
-	for (int i = 0; i < ASTEROIDS; i++)
-	{
-		// If it's a valid asteroid
-		if (gameState->asteroids[i].dim.width)
-		{
-			// If we have a collision on the bounding box
-			for (int j = 0; j < FIRECOUNT; j++)
-			{
-				if (gameState->player1.fire[j].life <= 0)
-					continue;
-				if (rectCollisionCheck(gameState->player1.fire[j].dim, gameState->asteroids[i].dim))
-				{
-					//Do a mask collision check
-					switch (gameState->asteroids[i].dim.height)
-					{
-					case 20:
-						rotateObject(gameState->asteroids[i].dim, gameState->asteroids[i].rotation, 1, Asteroid20x20, rotAst);
+					// Draw the correct size car
+					switch (((gameStateDrive->cars[i].y - (screenBuff->HEIGHT / 3)) * 8) / fullHeight) {
+					case 0: dim.height = playerCar1_height;
+						dimCar.width = playerCar1_width;
+						dimCar.x += 7;
+						car = (bool*)playerCar1;
 						break;
-					case 10:
-						rotateObject(gameState->asteroids[i].dim, gameState->asteroids[i].rotation, 1, Asteroid10x10, rotAst);
+					case 1: dimCar.height = playerCar2_height;
+						dimCar.width = playerCar2_width;
+						dimCar.x += 7;
+						car = (bool*)playerCar2;
 						break;
-					case 5:
-						rotateObject(gameState->asteroids[i].dim, gameState->asteroids[i].rotation, 1, Asteroid5x5, rotAst);
+					case 2: dimCar.height = playerCar4_height;
+						dimCar.x += 6;
+						dimCar.width = playerCar4_width;
+						car = (bool*)playerCar4;
+						break;
+					case 3: dimCar.height = playerCar8_height;
+						dimCar.width = playerCar8_width;
+						dimCar.x += 4;
+						car = (bool*)playerCar8;
+						break;
+					default: dimCar.height = playerCar_height;
+						dimCar.width = playerCar_width;
+						car = (bool*)playerCar;
 						break;
 					}
 
-					if (maskCollisionCheck(gameState->player1.fire[j].dim, gameState->asteroids[i].dim, Bullet, rotAst))
-					{
-						//Explode this one!
-						// If the score time multiplier wasn't over (1 second default) then give bonus points.
-						if (gameState->scoreTimeMultiplier > getTimeInMillis())
-						{
-							gameState->score += gameState->asteroids[i].dim.width;
-						}
-						// Reset score multiplier
-						gameState->scoreTimeMultiplier = getTimeInMillis() + SCORETIMEMULTTIMEOUT;
-
-						// If the size is the same as the last asteroid, multiplier goes up.
-						if (gameState->lastScore == gameState->asteroids[i].dim.width)
-						{
-							// Multiplier code
-							if (gameState->multiplier > gameState->maxMultiplier)
-							{
-								gameState->multiplier = gameState->maxMultiplier;
-							}
-							else
-							{
-								gameState->multiplier += 1;
-							}
-						}
-						else
-						{
-							// Reset the multiplier
-							gameState->multiplier = 1;
-						}
-
-						gameState->score += gameState->asteroids[i].dim.width * gameState->multiplier;
-
-						int counter = 0;
-						int size = 0;
-
-						switch (gameState->asteroids[i].dim.width)
-						{
-						case 10:
-							//Spawn 3 x 5
-							counter = 2;
-							size = 5;
-							break;
-						case 20:
-							//Spawn 3 x 10
-							counter = 2;
-							size = 10;
-							break;
-						}
-
-						// Spawn Asteroids
-						while (counter > 0)
-						{
-							for (int emptyAsteroid = 0; emptyAsteroid < ASTEROIDS; emptyAsteroid++)
-							{
-								if (gameState->asteroids[emptyAsteroid].dim.width == 0)
-								{
-									counter--;
-									gameState->asteroids[emptyAsteroid].fixX = gameState->asteroids[i].fixX;
-									gameState->asteroids[emptyAsteroid].fixY = gameState->asteroids[i].fixY;
-
-									gameState->asteroids[emptyAsteroid].speed = FLOAT_TO_FIXP((double)(rand() % 10) / (double)10);
-									gameState->asteroids[emptyAsteroid].size = FLOAT_TO_FIXP(size);
-									gameState->asteroids[emptyAsteroid].direction = INT_TO_FIXP(rand() % 360);
-									gameState->asteroids[emptyAsteroid].rotateAmount = rand() % 4000;
-									gameState->asteroids[emptyAsteroid].dim.width = size;
-									gameState->asteroids[emptyAsteroid].dim.height = size;
-									break;
-								}
-							}
-						}
-
-						gameState->asteroids[i].dim.width = 0;
-						gameState->asteroids[i].dim.height = 0;
-
-						// Bullet is done
-						gameState->player1.fire[j].life = 0;
+					int laneSpace = dim.width / 3;
+					switch (gameStateDrive->cars[i].lane) {
+					case 0: break;
+					case 1: dimCar.x += laneSpace; break;
+					case 2: dimCar.x += laneSpace * 2 + dimCar.width / 2; break;
 					}
+
+					bufDraw[i].dim = dimCar;
+					bufDraw[i].draw = true;
+					bufDraw[i].object = car;
+				}
+			}
+		}
+
+		// Progress Loop
+		y += 1;
+		j += 1;
+		
+		// Change the offset every second line (give a nice flow to the bottom)
+		if (y % 2 == 0 && turnOffset != 0) {
+			turnOffset = (int)(turnOffset * 0.9);
+		}
+	}
+
+	// Draw Cars
+	for (int i = 0; i < gameStateDrive->maxCars; i++)
+	{
+		if (bufDraw[i].draw) {
+			drawObjectFill(screenBuff, bufDraw[i].dim, bufDraw[i].object, 0);
+		}
+	}
+
+	// Draw Trees
+	BufferedDrawObject player;
+	player.dim = gameStateDrive->playerCar;
+
+	// Draw Player
+	if (gameStateDrive->p1keys.left) {
+		player.object = (bool *)playerCarLeft;
+	}
+	else if (gameStateDrive->p1keys.right) {
+		player.object = (bool *)playerCarRight;
+	}
+	else {
+		player.object = (bool *)playerCar;
+	}
+
+	drawObjectFill(screenBuff, player.dim, player.object, 0);
+
+	// Collision detection
+	for (int i = 0; i < gameStateDrive->maxCars; i++) {
+		if (bufDraw[i].draw) {
+			if (rectCollisionCheck(bufDraw[i].dim, player.dim)) {
+				if (maskCollisionCheck(bufDraw[i].dim, player.dim, bufDraw[i].object, player.object)) {
+					gameStateDrive->collision = true;
+					displayNoise(screenBuff, bufDraw[i].dim, 0);
+					displayNoise(screenBuff, gameStateDrive->playerCar, 0);
 				}
 			}
 		}
 	}
+
+	// Draw console
+	char speed[20];
+	sprintf(speed, "%i mph, %i feet", gameStateDrive->carSpeed, gameStateDrive->stageDistance - gameStateDrive->distance / 8);
+	drawString(screenBuff, speed, 0, 0, false);
+	sprintf(speed, "%i s", (int)gameStateDrive->stageTime - getElapsedSeconds());
+	drawString(screenBuff, speed, 0, 8, false);
 }
 
-void displayGame(GameState *gameState, ScreenBuff *screenBuff)
-{
-	displayClear(screenBuff, 1, false);
+void startUpGame(GameStateDrive* gameStateDrive, ScreenBuff* screenBuff) {
+	initTime();
+	
+	gameStateDrive->playerCar.x = screenBuff->WIDTH / 2 - playerCar_width / 2;
+	gameStateDrive->playerCar.y = screenBuff->HEIGHT - playerCar_height - 4;
+	gameStateDrive->playerCar.width = playerCar_width;
+	gameStateDrive->playerCar.height = playerCar_height;
 
-	// temporary rotation variable.
-	bool rotAst[400];
+	
+	switch (gameStateDrive->level)  {
+	case 1:
+		gameStateDrive->maxCars = 1;
+		gameStateDrive->stageDistance = 800;
+		gameStateDrive->stageTime = 60;
+		break;
+	case 2:
+		gameStateDrive->maxCars = 2;
+		gameStateDrive->stageDistance = 1000;
+		gameStateDrive->stageTime = 70;
+		break;
+	}
 
-	// Draw ship
-	rotateObject(gameState->player1.dim, gameState->player1.rotation, 1, Ship10x10, rotAst);
-	drawObjectWrap(screenBuff, gameState->player1.dim, rotAst);
+	for (int i = 0; i < gameStateDrive->maxCars; i++) {
+		initCar(gameStateDrive, screenBuff, &gameStateDrive->cars[i]);
+	}
+	
+	gameStateDrive->frameCounter = 0;
+	gameStateDrive->distance = 0;
+	gameStateDrive->lastdistance = 0;
+	gameStateDrive->turnOffset = 0;
 
-	//Draw asteroids
-	for (int i = 0; i < ASTEROIDS; i++)
-	{
-		if (gameState->asteroids[i].dim.height > 0)
-		{
-			switch (gameState->asteroids[i].dim.height)
-			{
-			case 20:
-				rotateObject(gameState->asteroids[i].dim, gameState->asteroids[i].rotation, 1, Asteroid20x20, rotAst);
-				break;
-			case 10:
-				rotateObject(gameState->asteroids[i].dim, gameState->asteroids[i].rotation, 1, Asteroid10x10, rotAst);
-				break;
-			case 5:
-				rotateObject(gameState->asteroids[i].dim, gameState->asteroids[i].rotation, 1, Asteroid5x5, rotAst);
-				break;
-			}
-			drawObjectWrap(screenBuff, gameState->asteroids[i].dim, rotAst);
+	gameStateDrive->turning = false;
+	gameStateDrive->turningLeft = false;
+	gameStateDrive->turnDepth = 0;
+
+	gameStateDrive->carSpeed = 0;
+	gameStateDrive->roadSpeed = 0;
+	gameStateDrive->evenLines = true;
+	gameStateDrive->collision = false;
+	gameStateDrive->running = true;
+	gameStateDrive->restart = false;
+}
+
+bool firstRun = true;
+
+bool myGameLoop(ScreenBuff* screenBuff, byte buttonVals) {
+	processInput(&gameStateDrive, buttonVals);
+
+	switch (gameStateDrive.scene) {
+	case 0: //Start Up Image
+		if (gameStateDrive.scene != gameStateDrive.lastscene) {
+			gameStateDrive.lastscene = gameStateDrive.scene;
 		}
-	}
-	char topline[17];
-	sprintf(topline, "Scr %5d Lvl %2d", gameState->score, gameState->level);
-	//sprintf(topline, "%3.1f %3.1f %3.1f",FIXP_TO_FLOAT(gameState->player1.direction),	FIXP_TO_FLOAT(xVec(FIXP_1, gameState->player1.direction)),FIXP_TO_FLOAT(yVec(FIXP_1, gameState->player1.direction)));
-	drawString(screenBuff, topline, 0, 0, true);
-
-	// Draw bullets
-	for (int i = 0; i < FIRECOUNT; i++)
-	{
-		if (gameState->player1.fire[i].life <= 0)
-			continue;
-		drawObjectWrap(screenBuff, gameState->player1.fire[i].dim, Bullet);
-	}
-}
-
-void processAttractMode(GameState *gameState, ScreenBuff *screenBuff)
-{
-	// Press A or B to starts
-	if (gameState->p1keys.a || gameState->p1keys.b)
-	{
-		gameState->scene = 1;
-	}
-}
-
-void initAttractMode(GameState *gameState)
-{
-	for (int i = 0; i < ASTEROIDS; i++)
-	{
-		gameState->asteroids[i].dim.width = 0;
-		gameState->asteroids[i].dim.height = 0;
-	}
-
-	for (int i = 0; i < rand() % 8 + 2; i++)
-	{
-		int size = rand() % 3;
-		switch (size)
-		{
-		case 0:
-			size = 5;
-			break;
-		case 1:
-			size = 10;
-			break;
-		case 2:
-			size = 20;
-			break;
-		}
-
-		gameState->asteroids[i].speed = FLOAT_TO_FIXP((double)(rand() % 10) / (double)10);
-		gameState->asteroids[i].size = FLOAT_TO_FIXP(size);
-		gameState->asteroids[i].direction = INT_TO_FIXP(rand() % 360);
-		gameState->asteroids[i].rotateAmount = rand() % 4000;
-		gameState->asteroids[i].dim.width = size;
-		gameState->asteroids[i].dim.height = size;
-	}
-}
-
-void updateAttractMode(GameState *gameState, ScreenBuff *screenBuff)
-{
-	// Draw some asteroids floating in the background
-	for (int i = 0; i < ASTEROIDS; i++)
-	{
-		if (gameState->asteroids[i].dim.width)
-		{
-			gameState->asteroids[i].fixX += xVec(gameState->asteroids[i].speed, gameState->asteroids[i].direction);
-			gameState->asteroids[i].fixY += yVec(gameState->asteroids[i].speed, gameState->asteroids[i].direction);
-
-			if (gameState->asteroids[i].fixX < INT_TO_FIXP(0))
-				gameState->asteroids[i].fixX += INT_TO_FIXP(screenBuff->WIDTH);
-			if (gameState->asteroids[i].fixX > INT_TO_FIXP(screenBuff->WIDTH))
-				gameState->asteroids[i].fixX -= INT_TO_FIXP(screenBuff->WIDTH);
-
-			if (gameState->asteroids[i].fixY < INT_TO_FIXP(0))
-				gameState->asteroids[i].fixY += INT_TO_FIXP(screenBuff->HEIGHT);
-			if (gameState->asteroids[i].fixY > INT_TO_FIXP(screenBuff->HEIGHT))
-				gameState->asteroids[i].fixY -= INT_TO_FIXP(screenBuff->HEIGHT);
-
-			gameState->asteroids[i].dim.x = FIXP_TO_INT(gameState->asteroids[i].fixX) % screenBuff->WIDTH;
-			gameState->asteroids[i].dim.y = FIXP_TO_INT(gameState->asteroids[i].fixY) % screenBuff->HEIGHT;
-			gameState->asteroids[i].rotation = ((double)getTimeInMillis()) / gameState->asteroids[i].rotateAmount;
-		}
-	}
-}
-
-void displayAttractMode(GameState *gameState, ScreenBuff *screenBuff)
-{
-	// Clear the screen
-	displayClear(screenBuff, 1, false);
-
-	//Draw asteroids
-	bool rotAst[400];
-	for (int i = 0; i < ASTEROIDS; i++)
-	{
-		if (gameState->asteroids[i].dim.height > 0)
-		{
-			switch (gameState->asteroids[i].dim.height)
-			{
-			case 20:
-				rotateObject(gameState->asteroids[i].dim, gameState->asteroids[i].rotation, 1, Asteroid20x20, rotAst);
-				break;
-			case 10:
-				rotateObject(gameState->asteroids[i].dim, gameState->asteroids[i].rotation, 1, Asteroid10x10, rotAst);
-				break;
-			case 5:
-				rotateObject(gameState->asteroids[i].dim, gameState->asteroids[i].rotation, 1, Asteroid5x5, rotAst);
-				break;
-			}
-			drawObjectWrap(screenBuff, gameState->asteroids[i].dim, rotAst);
-		}
-	}
-
-	// Alternate press button text on and off every second
-	if (getTimeInMillis() / 1000 % 2 == 0)
-	{
-		char scrollerText[17] = "Press a button";
-		drawString(screenBuff, scrollerText, 8, 38, false);
-		char scrollerText2[17] = "to start";
-		drawString(screenBuff, scrollerText2, 32, 45, false);
-	}
-
-	char hiScore[17];
-	sprintf(hiScore,"%d",gameState->hiScore);
-	drawString(screenBuff, hiScore, 0, 0, true);
-}
-
-bool myGameLoop(ScreenBuff *screenBuff, byte buttonVals)
-{
-	processInput(&gameState, buttonVals);
-
-	switch (gameState.scene)
-	{
-	case -1: // Load Screen
-		if (gameState.lastscene != gameState.scene)
-		{
-			gameState.lastscene = gameState.scene;
-			showLogo(mygame_image, screenBuff);
-		}
-		else
-		{
+		if (firstRun) {
+			showLogo(mygame_image,screenBuff);
+			firstRun = false;
+		} else {
 			updateMinTime(2000);
-			gameState.scene++;
+			gameStateDrive.scene = 1;
 		}
 		break;
-	case 0: // Attract screen
-		if (gameState.lastscene != gameState.scene)
-		{
-			gameState.lastscene = gameState.scene;
-			initAttractMode(&gameState);
+	case 1: //Intro Flag 
+		if (gameStateDrive.scene != gameStateDrive.lastscene) {
+			startUpGame(&gameStateDrive, screenBuff);
+			gameStateDrive.lastscene = gameStateDrive.scene;
 		}
 
-		processAttractMode(&gameState, screenBuff);
-		updateAttractMode(&gameState, screenBuff);
-		displayAttractMode(&gameState, screenBuff);
-		break;
-	case 1: // Intro
-		if (gameState.lastscene != gameState.scene)
-		{
-			gameState.lastscene = gameState.scene;
-			gameState.frameCounter = 0;
-			resetGameState(&gameState, screenBuff);
-		}
-
-		updateScroller(&gameState, screenBuff);
-		if (!displayScroller(&gameState, screenBuff))
-		{
-			gameState.scene = 4;
+		if (!drawWavingFlag(&gameStateDrive, screenBuff)) {
+			gameStateDrive.scene = 2;
 		}
 
 		break;
-	case 3: // Asteroid!
-		if (gameState.lastscene != gameState.scene)
-		{
-			gameState.lastscene = gameState.scene;
-			if (gameState.level == 1)
-			{
-				resetGameState(&gameState, screenBuff);
-				startLevel(&gameState, screenBuff);
-			}
+
+	case 2: //Intro
+		if (gameStateDrive.scene != gameStateDrive.lastscene) {
+			startUpGame(&gameStateDrive, screenBuff);
+			gameStateDrive.frameCounter = 0;
+			gameStateDrive.lastscene = gameStateDrive.scene;
 		}
 
-		if (gameState.win)
-		{
-			if (gameState.level >= 10)
-			{
-				gameState.scene = 2;
-				gameState.win = false;
-			}
-			else
-			{
-				startLevel(&gameState, screenBuff);
-				gameState.scene = 4;
-			}
-			return false;
-		}
-		updateGame(&gameState, screenBuff);
-		displayGame(&gameState, screenBuff);
-		break;
-	case 2: // Outro
-		if (gameState.lastscene != gameState.scene)
-		{
-			gameState.lastscene = gameState.scene;
-			gameState.frameCounter = 0;
-		}
-
-		updateOutroScroller(&gameState, screenBuff);
-		if (!displayOutroScroller(&gameState, screenBuff))
-		{
-			gameState.scene = 0;
-			gameState.win = false;
-			return false;
+		updateDriveScroller(&gameStateDrive, screenBuff);
+		if (!displayDriveScroller(&gameStateDrive, screenBuff)) {
+			gameStateDrive.scene = 4;
 		}
 
 		break;
-	case 5: // Game Over
-	{
-		if (gameState.lastscene != gameState.scene)
-		{
-			gameState.frameCounter = 0;
-			gameState.lastscene = gameState.scene;
+	case 4: // Level Slider 
+		if (gameStateDrive.scene != gameStateDrive.lastscene) {
+			startUpGame(&gameStateDrive, screenBuff);
+			gameStateDrive.lastscene = gameStateDrive.scene;
 		}
 
-		if (gameState.frameCounter == 100)
-		{
-			gameState.scene = 0;
+		if (!displayLevelSlider(&gameStateDrive, screenBuff)) {
+			gameStateDrive.scene = 3;
+		}
+		break;
+
+	case 3: //Drive
+		if (gameStateDrive.scene != gameStateDrive.lastscene) {
+			// Play the car starting sound
+			char sound[] = "data/carStart.wav";
+			audioPlay(sound);
+			
+			startUpGame(&gameStateDrive, screenBuff);
+			gameStateDrive.lastscene = gameStateDrive.scene;
 		}
 
-		char gameOver[16];
-		sprintf(gameOver, "Game Over");
-		for (int i = 0; i < static_cast<int>(strlen(gameOver)); i++)
-		{
-			drawCharacter(screenBuff, gameOver[i], 40 + 8 * i, 25);
-		}
-
-		// Sliders
-		int cnt = 0;
-		for (int i = gameState.frameCounter; i > 0; i--)
-		{
-			if (cnt < screenBuff->WIDTH / 2)
-			{
-				cnt++;
-				screenBuff->consoleBuffer[screenBuff->WIDTH * 20 + i] = 1;
-				screenBuff->consoleBuffer[screenBuff->WIDTH * 35 - i] = 1;
+		// Gameplay until done
+		if (!updateDrive(&gameStateDrive, screenBuff)) {
+			if (gameStateDrive.win) {
+				gameStateDrive.level++;
+				gameStateDrive.scene = 5;
+			}
+			else {
+				// Lost the game
+				gameStateDrive.level = 1;
+				startUpGame(&gameStateDrive, screenBuff);
+				gameStateDrive.scene = 5;
 			}
 		}
 
-		gameState.frameCounter++;
-	}
-	break;
-	case 4: // Level Slider
-	{
-		if (gameState.lastscene != gameState.scene)
-		{
-			gameState.frameCounter = 0;
-			gameState.lastscene = gameState.scene;
-			displayClear(screenBuff, 0, false);
+		// Normal gameplay
+		displayDrive(&gameStateDrive, screenBuff);
+
+		break;
+	case 5: // Display Win Lose
+		if (gameStateDrive.scene != gameStateDrive.lastscene) {
+			gameStateDrive.lastscene = gameStateDrive.scene;
+			initTime();
 		}
 
-		if (gameState.frameCounter == 100)
-		{
-			gameState.scene = 3;
-		}
+		gameStateDrive.frameCounter++;
 
-		displayClear(screenBuff, 0, false);
-
-		char fps[16];
-		sprintf(fps, "Level %i", gameState.level);
-		for (int i = 0; i < static_cast<int>(strlen(fps)); i++)
-		{
-			drawCharacter(screenBuff, fps[i], 40 + 8 * i, 25);
-		}
-
-		// Sliders
-		int counter = 0;
-		for (int i = gameState.frameCounter; i > 0; i--)
-		{
-			if (counter < screenBuff->WIDTH / 2)
-			{
-				counter++;
-				screenBuff->consoleBuffer[screenBuff->WIDTH * 20 + i] = 1;
-				screenBuff->consoleBuffer[screenBuff->WIDTH * 35 - i] = 1;
+		if (!displayWinLose(&gameStateDrive, screenBuff)) {
+			if (gameStateDrive.win) {
+				if (gameStateDrive.level < 3) {
+					// Move to next stage
+					gameStateDrive.scene = 4;
+				}
+				else {
+					// Won the game
+					gameStateDrive.scene = 6;
+				}
+			}
+			else {
+				// Lost the game
+				// Reset to start
+				gameStateDrive.scene = 0;
 			}
 		}
-		gameState.frameCounter++;
-	}
-	break;
+		break;
+	case 6: //Outro 
+		if (gameStateDrive.scene != gameStateDrive.lastscene) {
+			startUpGame(&gameStateDrive, screenBuff);
+			gameStateDrive.frameCounter = 0;
+			gameStateDrive.lastscene = gameStateDrive.scene;
+		}
+
+		updateDriveScroller(&gameStateDrive, screenBuff);
+		if (!displayDriveOutroScroller(&gameStateDrive, screenBuff)) {
+			gameStateDrive.scene = 0;
+			return true;
+		}
+
+		break;
 	}
 
 	return false;
