@@ -7,6 +7,7 @@ add_executable(${PROJECT_NAME}
     myfont.cpp 
     gameCommon.cpp 
     myGame.cpp 
+    mazeGenerator.cpp
     platform_core.cpp)
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
