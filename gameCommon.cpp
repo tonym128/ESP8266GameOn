@@ -331,7 +331,7 @@ void drawObject(ScreenBuff *screenBuff, Dimensions dim, bool *objectArray, bool 
 			{
 				screenBuff->consoleBuffer[pixel] = 1;
 			}
-			else if (backFill)
+			else if (pixel >= 0 && pixel < screenBuff->MAXPIXEL && backFill)
 			{
 				screenBuff->consoleBuffer[pixel] = 0;
 			}
