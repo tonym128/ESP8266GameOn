@@ -93,6 +93,15 @@ void gameInit()
 {
 }
 
+string readFile(string fileName) {
+	string data = "{hiScore:0}";
+	return data;
+}
+
+bool writeFile(string filename, string data) {
+	return false;
+}
+
 int main()
 {
 	SDL_Init(SDL_INIT_VIDEO);

@@ -302,6 +302,12 @@ void updateGame(GameState *gameState, ScreenBuff *screenBuff)
 		gameState->scene = 5;
 		if (gameState->score > gameState->hiScore) {
 			gameState->hiScore = gameState->score;
+			/* 
+			-- Save State
+			string config;
+			sprintf(config,"{hiScore:%d}",gameState->hiScore);
+			writeFile("asteroids.txt",config); 
+			*/
 		}
 	}
 

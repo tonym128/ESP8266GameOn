@@ -101,6 +101,33 @@ void gameInit()
     nodelay(stdscr, TRUE);
 }
 
+string readFile(string fileName) {
+  string data;
+
+  try {
+    ifstream myfile;
+    myfile.open (fileName, ios::out | ios::trunc); 
+    std::getline (myfile,data);
+    myfile.close();
+  } catch(...){
+
+  }
+
+	return data;
+}
+
+bool writeFile(string fileName, string data) {
+  try {
+  ofstream myfile;
+  myfile.open (fileName, ios::in); 
+  myfile << data;
+  myfile.close();
+  return true; 
+  } catch(...) {
+    return false;
+  }
+}
+
 int main(int argc, char*argv[])
 {
   audioSetup();

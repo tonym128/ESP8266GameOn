@@ -1,7 +1,7 @@
 #include <brzo_i2c.h>
 #include "SSD1306Brzo.h"
 #include <ESP8266WiFi.h>
-#include "FS.h"
+#include <FS.h>   // Include the SPIFFS library
 
 SSD1306Brzo display(0x3c, D1, D4);
 
@@ -197,4 +197,28 @@ void gameInit()
   display.init();
   display.displayOn();
   display.flipScreenVertically();
+}
+
+string readFile(string fileName) {
+  string data;
+  try {
+  File file = SPIFFS.open(fileName, "r");
+  data = file.readString();
+  file.close();
+  } catch(...) {
+
+  }
+
+  return data;
+}
+
+bool writeFile(string filename, string data) {
+  try {
+    File file = SPIFFS.open(fileName, "w");
+    file.print(data);
+    file.close();
+    return true;
+  } catch (...) {
+    return false;
+  }
 }
