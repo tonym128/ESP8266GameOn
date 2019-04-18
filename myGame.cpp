@@ -2,14 +2,14 @@
 
 GameState gameState;
 
+bool *Zero = font('0');
+bool *One = font('1');
+bool *Space = font(' ');
+
 void displayScroller(GameState *gameState, ScreenBuff *screenBuff)
 {
 	// Stabalise characters by doing initial seed and pulling characters from there, looping
 	gameState->frameCounter += 1;
-
-	bool *Zero = font('0');
-	bool *One = font('1');
-	bool *Space = font(' ');
 
 	Dimensions dim;
 	dim.width = 8;
@@ -45,5 +45,6 @@ bool myGameLoop(ScreenBuff *screenBuff, byte buttonVals)
 	// To introduce line speed do this for each of the 16 columns
 	displayClear(screenBuff, 1, 0);
 	displayScroller(&gameState, screenBuff);
+  updateMinTime(60);
 	return false;
 }
