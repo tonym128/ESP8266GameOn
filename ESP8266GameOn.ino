@@ -1,7 +1,7 @@
 #include "game.hpp"
 
 void setup() {
-  Serial.begin(114200);
+  Serial.begin(921600);
   Serial.println("setup");
   
   audioSetup();
