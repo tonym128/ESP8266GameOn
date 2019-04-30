@@ -26,6 +26,8 @@ void resetGameState(GameState *gameState, ScreenBuff *screenBuff)
 
 	gameState->player1.dim.width = 10;
 	gameState->player1.dim.height = 10;
+	gameState->player1.dim.x = 16;
+	gameState->player1.dim.y = 27;
 }
 
 void updateGame(GameState *gameState, ScreenBuff *screenBuff)
@@ -35,6 +37,9 @@ void updateGame(GameState *gameState, ScreenBuff *screenBuff)
 void displayGame(GameState *gameState, ScreenBuff *screenBuff)
 {
 	displayClear(screenBuff, 1, false);
+	bool rotatedShip[100];
+	rotateObject(gameState->player1.dim,,1.0,Ship10x10,rotatedShip);
+	drawObject(screenBuff,gameState->player1.dim, rotatedShip);
 }
 
 void processAttractMode(GameState *gameState, ScreenBuff *screenBuff)
