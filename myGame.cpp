@@ -38,7 +38,7 @@ void displayGame(GameState *gameState, ScreenBuff *screenBuff)
 {
 	displayClear(screenBuff, 1, false);
 	bool rotatedShip[100];
-	rotateObject(gameState->player1.dim,,1.0,Ship10x10,rotatedShip);
+	rotateObject(gameState->player1.dim,1.0/6,1.0,Ship10x10,rotatedShip);
 	drawObject(screenBuff,gameState->player1.dim, rotatedShip);
 }
 
