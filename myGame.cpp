@@ -92,7 +92,7 @@ bool myGameLoop(ScreenBuff *screenBuff, byte buttonVals)
 		updateAttractMode(&gameState, screenBuff);
 		displayAttractMode(&gameState, screenBuff);
 		break;
-	case 1: // Flappy Bird in a Asteroid!
+	case 1: // Flappy Bird in a Ship!
 		if (gameState.lastscene != gameState.scene)
 		{
 			gameState.lastscene = gameState.scene;
