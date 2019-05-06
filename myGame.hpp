@@ -17,6 +17,7 @@ struct Player1Keys {
 struct Player {
   Dimensions dim;
   bool inPlay = true;
+  double rotation = 0;
 };
 
 struct GameState {

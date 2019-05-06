@@ -32,13 +32,22 @@ void resetGameState(GameState *gameState, ScreenBuff *screenBuff)
 
 void updateGame(GameState *gameState, ScreenBuff *screenBuff)
 {
+	if (gameState->p1keys.left) {
+		gameState->player1.rotation -= 0.01;
+	}
+	if (gameState->p1keys.right) {
+		gameState->player1.rotation += 0.01;
+	}
 }
 
 void displayGame(GameState *gameState, ScreenBuff *screenBuff)
 {
 	displayClear(screenBuff, 1, false);
 	bool rotatedShip[100];
-	rotateObject(gameState->player1.dim,1.0/6,1.0,Ship10x10,rotatedShip);
+	rotateObject(gameState->player1.dim,gameState->player1.rotation,1.0,Ship10x10,rotatedShip);
+	char rotation[16];
+	sprintf(rotation,"%f",gameState->player1.rotation);
+	drawString(screenBuff,rotation,8,0);
 	drawObject(screenBuff,gameState->player1.dim, rotatedShip);
 }
 
@@ -60,6 +69,23 @@ void updateAttractMode(GameState *gameState, ScreenBuff *screenBuff)
 {
 
 }
+static int FIRE_WIDTH = 128;
+static int FIRE_HEIGHT = 64;
+static int firePixels[128*64];
+
+ void spreadFire(int src) {
+    int rand = (random() * 3.0) & 3;
+    int dst = src - rand + 1;
+    firePixels[dst - FIRE_WIDTH ] = firePixels[src] - (rand & 1);
+ }
+ 
+ void doFire() {
+    for(int x=0 ; x < FIRE_WIDTH; x++) {
+        for (int y = 1; y < FIRE_HEIGHT; y++) {
+            spreadFire(y * FIRE_WIDTH + x);
+        }
+    }
+ }
 
 void displayAttractMode(GameState *gameState, ScreenBuff *screenBuff)
 {
@@ -74,6 +100,12 @@ void displayAttractMode(GameState *gameState, ScreenBuff *screenBuff)
 		char scrollerText2[17] = "to start";
 		drawString(screenBuff, scrollerText2, 32, 45, false);
 	}
+
+    for(int x=0 ; x < FIRE_WIDTH; x++) {
+        for (int y = 1; y < FIRE_HEIGHT; y++) {
+            screenBuff->consoleBuffer[y * FIRE_WIDTH + x] = firePixels[y * FIRE_WIDTH + x] > 20;
+        }
+    }
 
 	char hiScore[17];
 	sprintf(hiScore,"%d",gameState->hiScore);
