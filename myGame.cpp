@@ -60,25 +60,23 @@ void processAttractMode(GameState *gameState, ScreenBuff *screenBuff)
 	}
 }
 
-void initAttractMode(GameState *gameState)
-{
-
-}
-
-void updateAttractMode(GameState *gameState, ScreenBuff *screenBuff)
-{
-
-}
 static int FIRE_WIDTH = 128;
 static int FIRE_HEIGHT = 64;
 static int firePixels[128*64];
 
  void spreadFire(int src) {
-    int rand = (random() * 3.0) & 3;
-    int dst = src - rand + 1;
-    firePixels[dst - FIRE_WIDTH ] = firePixels[src] - (rand & 1);
+    int random = rand() % 3;
+    int dst = src - random + 1;
+    firePixels[dst - FIRE_WIDTH ] = firePixels[src] - (random & 1);
  }
  
+ void startFire() {
+    for(int x=0 ; x < FIRE_WIDTH; x++) {
+        int y = FIRE_HEIGHT - 1;
+        firePixels[y * FIRE_WIDTH + x] = 10;
+    }
+ }
+
  void doFire() {
     for(int x=0 ; x < FIRE_WIDTH; x++) {
         for (int y = 1; y < FIRE_HEIGHT; y++) {
@@ -87,26 +85,37 @@ static int firePixels[128*64];
     }
  }
 
+void initAttractMode(GameState *gameState)
+{
+	srand((unsigned int)time(0));
+	startFire();
+}
+
+void updateAttractMode(GameState *gameState, ScreenBuff *screenBuff)
+{
+	doFire();
+}
+
 void displayAttractMode(GameState *gameState, ScreenBuff *screenBuff)
 {
 	// Clear the screen
 	displayClear(screenBuff, 1, false);
 
+    for(int x=0 ; x < FIRE_WIDTH; x++) {
+        for (int y = 1; y < FIRE_HEIGHT; y++) {
+            screenBuff->consoleBuffer[y * FIRE_WIDTH + x] = firePixels[y * FIRE_WIDTH + x] > 1;
+        }
+    }
+
 	// Alternate press button text on and off every second
 	if (getTimeInMillis() / 1000 % 2 == 0)
 	{
 		char scrollerText[17] = "Press a button";
-		drawString(screenBuff, scrollerText, 8, 38, false);
+		drawString(screenBuff, scrollerText, 8, 38, true);
 		char scrollerText2[17] = "to start";
-		drawString(screenBuff, scrollerText2, 32, 45, false);
+		drawString(screenBuff, scrollerText2, 32, 45, true);
 	}
-
-    for(int x=0 ; x < FIRE_WIDTH; x++) {
-        for (int y = 1; y < FIRE_HEIGHT; y++) {
-            screenBuff->consoleBuffer[y * FIRE_WIDTH + x] = firePixels[y * FIRE_WIDTH + x] > 20;
-        }
-    }
-
+	
 	char hiScore[17];
 	sprintf(hiScore,"%d",gameState->hiScore);
 	drawString(screenBuff, hiScore, 0, 0, true);
