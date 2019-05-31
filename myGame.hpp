@@ -147,7 +147,7 @@ const static bool Bullet[1] = {
   1
 };
 
-#ifdef ARDUINO
+#ifdef ESP8266
 const static bool mygame_image[logo_width * logo_height] PROGMEM =
 #else
 const static bool mygame_image[logo_width * logo_height] =

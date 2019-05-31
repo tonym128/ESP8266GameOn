@@ -1,6 +1,7 @@
 #include <brzo_i2c.h>
 #include "SSD1306Brzo.h"
 #include <ESP8266WiFi.h>
+
 #include "FS.h"
 
 SSD1306Brzo display(0x3c, D1, D4);
@@ -22,6 +23,7 @@ bool readAnalogSensor(int pin)
   return inputVal > 20;
 }
 
+#ifdef ANALOG
 int readAnalogSensorRaw(int pin) {
   digitalWrite(pin, HIGH);
 
@@ -68,7 +70,7 @@ byte getReadShiftAnalog()
 
   return buttonVals;
 }
-
+#else
 byte getReadShiftDigital()
 {
   int inputPin = 1;
@@ -93,6 +95,7 @@ byte getReadShiftDigital()
 
   return buttonVals;
 }
+#endif
 
 std::array<int,8> getRawInput() {
   std::array<int,8> rawValues;

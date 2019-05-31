@@ -16,8 +16,10 @@ std::array<int,8> buttonRaw;
 #include "platform/win32.h"
 #elif __linux
 #include "platform/linux.h"
-#elif ARDUINO
-#include "platform/arduino.h"
+#elif ESP8266
+#include "platform/esp8266.h"
+#elif ESP32
+#include "platform/esp32.h"
 #endif
 
 void audioSetup()

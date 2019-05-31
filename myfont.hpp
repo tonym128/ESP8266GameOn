@@ -3,7 +3,7 @@
 #include <map>
 bool* font(char);
 static const int fontLength = 6144;
-#ifdef ARDUINO
+#ifdef ESP8266
 static const bool fontData[6144] PROGMEM =
 #else
 static const bool fontData[6144] =
