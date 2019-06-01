@@ -11,6 +11,7 @@ const int pinShcp = 15;   //Clock
 const int pinStcp = 0;    //Latch
 const int pinDataIn = 16; // Data
 
+#ifdef ANALOG
 int inputVal = 0;
 bool readAnalogSensor(int pin)
 {
@@ -23,7 +24,6 @@ bool readAnalogSensor(int pin)
   return inputVal > 20;
 }
 
-#ifdef ANALOG
 int readAnalogSensorRaw(int pin) {
   digitalWrite(pin, HIGH);
 

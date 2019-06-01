@@ -4,36 +4,47 @@
 #include "FS.h"
 
 SSD1306 display(0x3c, 21, 22); 
+static int TOUCH_SENSE = 12;
 
 int inputVal = 0;
 bool readAnalogSensor(int pin)
 {
-  inputVal = 0;
-  digitalWrite(pin, LOW);
+  inputVal = touchRead(pin);
 
-  return inputVal > 20;
+  Serial.print("Touch value is Pin");
+  Serial.print(pin);
+  Serial.print(" = ");
+  Serial.println( inputVal);
+
+  return inputVal < TOUCH_SENSE;
 }
 
-#ifdef ANALOG
 int readAnalogSensorRaw(int pin) {
-  inputVal = 0;
+  inputVal = touchRead(pin);
+
+  Serial.print("Touch value is Pin");
+  Serial.print(pin);
+  Serial.print(" = ");
+  Serial.println( inputVal);
+
   return inputVal;
 }
 
 byte getReadShiftAnalog()
 {
+  readAnalogSensorRaw(T8);
+
   byte buttonVals = 0;
+  buttonVals = buttonVals | (readAnalogSensor(T8) << P1_Left);
+  buttonVals = buttonVals | (0 << P1_Top);
+  buttonVals = buttonVals | (readAnalogSensor(T2) << P1_Right);
+  buttonVals = buttonVals | (0 << P1_Bottom);
+  buttonVals = buttonVals | (readAnalogSensor(T0) << P2_Left);
+  buttonVals = buttonVals | (readAnalogSensor(T1) << P2_Right);
+  buttonVals = buttonVals | (0 << P2_Top);
+  buttonVals = buttonVals | (0 << P2_Bottom);
   return buttonVals;
 }
-#elif
-byte getReadShiftDigital()
-{
-  int inputPin = 1;
-  int buttonPressedVal = 1; //Depending on how buttons are wired
-  byte buttonVals = 0;
-  return buttonVals;
-}
-#endif
 
 std::array<int,8> getRawInput() {
   std::array<int,8> rawValues;
@@ -41,16 +52,22 @@ std::array<int,8> getRawInput() {
 		rawValues[i] = 0;
 	}
 
+  int i = 0;
+  rawValues[i++] = touchRead(T8); // Left
+  rawValues[i++] = 0; // Up
+  rawValues[i++] = 0; // Right
+  rawValues[i++] = 0; // Down
+  rawValues[i++] = 0; // B
+  rawValues[i++] = 0; // Select
+  rawValues[i++] = 0; // A
+  rawValues[i++] = 0; // Start
+
   return rawValues;
 }
 
 byte getReadShift()
 {
-#ifdef ANALOG
     return getReadShiftAnalog();
-#else
-  return getReadShiftDigital();
-#endif
 }
 
 void sendToScreen()
