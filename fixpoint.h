@@ -9,7 +9,6 @@ typedef int byte;
 typedef uint8_t byte;     // BYTE = unsigned 8 bit value
 #elif ARDUINO
 #include <Arduino.h>  // for type definitions
-#include "SSD1306.h" // Screen Library
 #endif
 
 #define PI 3.14159265

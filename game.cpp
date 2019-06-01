@@ -16,8 +16,10 @@ std::array<int,8> buttonRaw;
 #include "platform/win32.h"
 #elif __linux
 #include "platform/linux.h"
-#elif ARDUINO
-#include "platform/arduino.h"
+#elif ESP8266
+#include "platform/esp8266.h"
+#elif ESP32
+#include "platform/esp32.h"
 #endif
 
 void audioSetup()
@@ -34,6 +36,7 @@ void gameSetup()
 
 void gameLoop()
 {
+
   audioLoop();
 
   // put your main code here, to run repeatedly:
@@ -49,6 +52,7 @@ void gameLoop()
   drawFPS(&screenBuff);
 #endif
 #ifdef DEBUG_OUTPUT
+
 	std::array<int,8> rawValues = getRawInput();
   for(int i = 0; i < 8; i+=2) {
     	char fpsString[17];
@@ -56,6 +60,7 @@ void gameLoop()
     	drawString(&screenBuff, fpsString, 0, i * 4, true);
   }
 #endif
+
   sendToScreen();
   updateMinTime(33);
 }
