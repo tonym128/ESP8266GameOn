@@ -36,6 +36,7 @@ void gameSetup()
 
 void gameLoop()
 {
+
   audioLoop();
 
   // put your main code here, to run repeatedly:
@@ -51,6 +52,7 @@ void gameLoop()
   drawFPS(&screenBuff);
 #endif
 #ifdef DEBUG_OUTPUT
+
 	std::array<int,8> rawValues = getRawInput();
   for(int i = 0; i < 8; i+=2) {
     	char fpsString[17];
@@ -58,6 +60,7 @@ void gameLoop()
     	drawString(&screenBuff, fpsString, 0, i * 4, true);
   }
 #endif
+
   sendToScreen();
   updateMinTime(33);
 }

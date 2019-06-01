@@ -32,15 +32,13 @@ int readAnalogSensorRaw(int pin) {
 
 byte getReadShiftAnalog()
 {
-  readAnalogSensorRaw(T8);
-
   byte buttonVals = 0;
   buttonVals = buttonVals | (readAnalogSensor(T8) << P1_Left);
-  buttonVals = buttonVals | (0 << P1_Top);
-  buttonVals = buttonVals | (readAnalogSensor(T2) << P1_Right);
-  buttonVals = buttonVals | (0 << P1_Bottom);
-  buttonVals = buttonVals | (readAnalogSensor(T0) << P2_Left);
-  buttonVals = buttonVals | (readAnalogSensor(T1) << P2_Right);
+  buttonVals = buttonVals | (readAnalogSensor(T0) << P1_Top);
+  buttonVals = buttonVals | (readAnalogSensor(T6) << P1_Right);
+  buttonVals = buttonVals | (readAnalogSensor(T3) << P1_Bottom);
+  buttonVals = buttonVals | (readAnalogSensor(T7) << P2_Left);
+  buttonVals = buttonVals | (readAnalogSensor(T5) << P2_Right);
   buttonVals = buttonVals | (0 << P2_Top);
   buttonVals = buttonVals | (0 << P2_Bottom);
   return buttonVals;
@@ -53,14 +51,14 @@ std::array<int,8> getRawInput() {
 	}
 
   int i = 0;
-  rawValues[i++] = touchRead(T8); // Left
-  rawValues[i++] = 0; // Up
-  rawValues[i++] = 0; // Right
-  rawValues[i++] = 0; // Down
-  rawValues[i++] = 0; // B
-  rawValues[i++] = 0; // Select
-  rawValues[i++] = 0; // A
-  rawValues[i++] = 0; // Start
+  rawValues[i++] = readAnalogSensorRaw(T8); // Left
+  rawValues[i++] = readAnalogSensorRaw(T0); // Up
+  rawValues[i++] = readAnalogSensorRaw(T6); // Right
+  rawValues[i++] = readAnalogSensorRaw(T3); // Down
+  rawValues[i++] = readAnalogSensorRaw(T7); // B
+  rawValues[i++] = 0;//readAnalogSensorRaw(T5); // Select
+  rawValues[i++] = readAnalogSensorRaw(T5); // A
+  rawValues[i++] = 0;//readAnalogSensorRaw(T7); // Start
 
   return rawValues;
 }
