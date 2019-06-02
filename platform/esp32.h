@@ -1,10 +1,10 @@
 #include "SSD1306.h"
 #include <WiFi.h>
-
+ 
 #include "FS.h"
 
 SSD1306 display(0x3c, 21, 22); 
-static int TOUCH_SENSE = 17;
+static int TOUCH_SENSE = 20;
 
 int inputVal = 0;
 bool readAnalogSensor(int pin)
