@@ -1,10 +1,17 @@
-#include "SSD1306.h"
+#include <TFT_eSPI.h>
 #include <WiFi.h>
  
 #include "FS.h"
 
-SSD1306 display(0x3c, 21, 22); 
 static int TOUCH_SENSE = 20;
+
+#ifdef SCREEN_ST7789
+TFT_eSPI tft = TFT_eSPI();   // Invoke library
+TFT_eSprite spr = TFT_eSprite(&tft); // Declare Sprite object "spr" with pointer to "tft" object
+#else
+#include "SSD1306.h"
+SSD1306 display(0x3c, 21, 22); 
+#endif
 
 int inputVal = 0;
 bool readAnalogSensor(int pin)
@@ -68,6 +75,39 @@ byte getReadShift()
     return getReadShiftAnalog();
 }
 
+#ifdef SCREEN_ST7789
+void sendToScreen()
+{
+  spr.fillScreen(TFT_BLACK);
+
+  int x = 0;
+  int y = 0;
+
+  for (int i = 0; i < screenBuff.WIDTH * screenBuff.HEIGHT; i++)
+  {
+    if (screenBuff.consoleBuffer[i])
+    {
+      int x = i % screenBuff.WIDTH;
+      int y = i / screenBuff.WIDTH;
+      spr.drawPixel(x,y,TFT_WHITE);
+    }
+  }
+
+  spr.pushSprite(0, 0);
+}
+
+void gameInit()
+{
+  Serial.println("gameInit");
+  tft.begin();     // initialize a ST7789 chip
+  tft.setSwapBytes(true); // Swap the byte order for pushImage() - corrects endianness
+  tft.fillScreen(TFT_BLACK);
+
+  spr.setColorDepth(1);
+  spr.createSprite(128, 64);
+  spr.fillScreen(TFT_BLACK);
+}
+#else
 void sendToScreen()
 {
   display.setColor(BLACK);
@@ -96,3 +136,4 @@ void gameInit()
   display.displayOn();
   display.flipScreenVertically();
 }
+#endif

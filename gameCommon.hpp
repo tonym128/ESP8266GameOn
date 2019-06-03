@@ -35,7 +35,6 @@
 #include <time.h>
 
 // Screen Buffer
-
 struct ScreenBuff {
 	static const int WIDTH = 128;
 	static const int HEIGHT = 64;

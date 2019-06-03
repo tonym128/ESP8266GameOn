@@ -3,7 +3,13 @@
 // #define AUDIO 1
 // #define DEBUG_OUTPUT
 
+// Define the screen you're using below, and define check the ESP32.h or ESP8266.h for pin settings
+// This has only been setup for the ESP32, but it can be backported
+#define SCREEN_ST7789
+// #define SCREEN_SSD1306
+
 #include "game.hpp"
+
 ScreenBuff screenBuff;
 byte buttonVals;
 std::array<int,8> buttonRaw;
