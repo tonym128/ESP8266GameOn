@@ -44,7 +44,7 @@ compile_commands.json
 CTestTestfile.cmake
 .vs/
 .vscode/ipch/
-
+.vscode/
 # Ignore the failure of getting git to run via vcpkg and cmake on Windows
 SDL2/
 
