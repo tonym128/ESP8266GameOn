@@ -20,7 +20,7 @@ std::array<int,8> buttonRaw;
 
 void audioSetup()
 {
-  audioInit();
+  // audioInit();
 }
 
 void gameSetup()
@@ -33,7 +33,7 @@ void gameSetup()
 void gameLoop()
 {
 
-  audioLoop();
+//  audioLoop();
 
   // put your main code here, to run repeatedly:
   buttonVals = getReadShift();
