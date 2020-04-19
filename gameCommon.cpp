@@ -59,59 +59,75 @@ void displayNoise(ScreenBuff *screenBuff, Dimensions dim, int amountInverse = 0)
 	}
 }
 
-FIXPOINT xVec(FIXPOINT speed, FIXPOINT direction) {
+FIXPOINT xVec(FIXPOINT speed, FIXPOINT direction)
+{
 
-	if (direction == INT_TO_FIXP(90)) return speed;
-	if (direction == INT_TO_FIXP(270)) return -speed;
-	
-	if (direction == INT_TO_FIXP(0) || direction == INT_TO_FIXP(180)) return 0;
+	if (direction == INT_TO_FIXP(90))
+		return speed;
+	if (direction == INT_TO_FIXP(270))
+		return -speed;
+
+	if (direction == INT_TO_FIXP(0) || direction == INT_TO_FIXP(180))
+		return 0;
 	FIXPOINT sign = FIXP_1;
 
-	if (direction < INT_TO_FIXP(90)) {
+	if (direction < INT_TO_FIXP(90))
+	{
 	}
-	else if (direction < INT_TO_FIXP(180)) {
+	else if (direction < INT_TO_FIXP(180))
+	{
 		direction = direction - INT_TO_FIXP(90);
 		direction = INT_TO_FIXP(90) - direction;
 	}
-	else if (direction < INT_TO_FIXP(270)) {
+	else if (direction < INT_TO_FIXP(270))
+	{
 		// X Value is -'ve
 		sign = INT_TO_FIXP(-1);
 		direction = direction - INT_TO_FIXP(180);
 	}
-	else {
+	else
+	{
 		// X Value is -'ve
 		direction = direction - INT_TO_FIXP(270);
 		direction = INT_TO_FIXP(90) - direction;
 		sign = INT_TO_FIXP(-1);
 	}
 
-	return FIXP_MULT(FIXP_MULT(speed,sign),FIXP_DIV(direction, INT_TO_FIXP(90)));
+	return FIXP_MULT(FIXP_MULT(speed, sign), FIXP_DIV(direction, INT_TO_FIXP(90)));
 }
 
-FIXPOINT yVec(FIXPOINT speed, FIXPOINT direction) {
-	if (direction == INT_TO_FIXP(90) || direction == INT_TO_FIXP(270)) return 0;
-	
-	if (direction == INT_TO_FIXP(0)) return -speed; 
-	if (direction == INT_TO_FIXP(180)) return speed;
+FIXPOINT yVec(FIXPOINT speed, FIXPOINT direction)
+{
+	if (direction == INT_TO_FIXP(90) || direction == INT_TO_FIXP(270))
+		return 0;
+
+	if (direction == INT_TO_FIXP(0))
+		return -speed;
+	if (direction == INT_TO_FIXP(180))
+		return speed;
 	FIXPOINT sign = FIXP_1;
 
-	if (direction < INT_TO_FIXP(90)) {
-		direction = INT_TO_FIXP(90)-direction;
+	if (direction < INT_TO_FIXP(90))
+	{
+		direction = INT_TO_FIXP(90) - direction;
 		sign = INT_TO_FIXP(-1);
 	}
-	else if (direction < INT_TO_FIXP(180)) {
+	else if (direction < INT_TO_FIXP(180))
+	{
 		direction = direction - INT_TO_FIXP(90);
 	}
-	else if (direction < INT_TO_FIXP(270)) {
+	else if (direction < INT_TO_FIXP(270))
+	{
 		direction = direction - INT_TO_FIXP(180);
-		direction = INT_TO_FIXP(90)-direction;
+		direction = INT_TO_FIXP(90) - direction;
 	}
-	else {
+	else
+	{
 		direction = direction - INT_TO_FIXP(270);
 		sign = INT_TO_FIXP(-1);
 	}
-	
-	return FIXP_MULT(FIXP_MULT(speed,sign),FIXP_DIV(direction, INT_TO_FIXP(90)));
+
+	return FIXP_MULT(FIXP_MULT(speed, sign), FIXP_DIV(direction, INT_TO_FIXP(90)));
 }
 
 void rotateObject(Dimensions dim, double angle, double zoom, const bool *object, bool *rotated)
@@ -125,13 +141,13 @@ void rotateObject(Dimensions dim, double angle, double zoom, const bool *object,
 	FIXPOINT cosmax;
 	FIXPOINT sinmax;
 
-	#ifdef __EMSCRIPTEN__
+#ifdef __EMSCRIPTEN__
 	FIXPOINT sinma = FIXP_MULT(FIXPOINT_SIN(FLOAT_TO_FIXP(-angle)), FLOAT_TO_FIXP(zoom));
 	FIXPOINT cosma = FIXP_MULT(FIXPOINT_COS(FLOAT_TO_FIXP(-angle)), FLOAT_TO_FIXP(zoom));
-	#else
+#else
 	FIXPOINT sinma = FLOAT_TO_FIXP(sin(-angle) * zoom);
 	FIXPOINT cosma = FLOAT_TO_FIXP(cos(-angle) * zoom);
-	#endif
+#endif
 
 	int hwidth = dim.width / 2;
 	int hheight = dim.height / 2;
@@ -236,8 +252,9 @@ void drawObjectWrap(ScreenBuff *screenBuff, Dimensions dim, const bool *objectAr
 	{
 		for (int i = dim.x; i < dim.x + dim.width; i++)
 		{
-			int pixel = i%screenBuff->WIDTH + screenBuff->WIDTH * (j%screenBuff->HEIGHT);
-			if (objectArray[counter]) screenBuff->consoleBuffer[pixel] = 1;
+			int pixel = i % screenBuff->WIDTH + screenBuff->WIDTH * (j % screenBuff->HEIGHT);
+			if (objectArray[counter])
+				screenBuff->consoleBuffer[pixel] = 1;
 			counter++;
 		}
 	}
@@ -341,10 +358,32 @@ void drawObject(ScreenBuff *screenBuff, Dimensions dim, bool *objectArray, bool 
 	}
 }
 
+void drawObjectPartial(ScreenBuff *screenBuff, Dimensions dim, bool *objectArray, bool backFill)
+{
+	int x = dim.screenx;
+	int y = dim.screeny;
+	for (int j = dim.y; j < dim.endy; j++)
+	{
+		x = dim.screenx;
+		for (int i = dim.x; i < dim.endx; i++)
+		{
+			int pixel = x + screenBuff->WIDTH * y;
+			if (objectArray[i + j * dim.width])
+				screenBuff->consoleBuffer[pixel] = 1;
+			else if (backFill)
+				screenBuff->consoleBuffer[pixel] = 0;
+			x++;
+		}
+		y++;
+	}
+}
+
 void drawVertLine(ScreenBuff *screenBuff, int x, int y, int length, bool colour, int pattern)
 {
-	if (x < 0 || x > screenBuff->WIDTH) return;
-	if (y < 0 || y > screenBuff->HEIGHT) return;
+	if (x < 0 || x > screenBuff->WIDTH)
+		return;
+	if (y < 0 || y > screenBuff->HEIGHT)
+		return;
 	int pixel = x + screenBuff->WIDTH * y;
 
 	switch (pattern)
@@ -508,7 +547,8 @@ int fpsItem = 0;
 int fpsItems = 0;
 int fpsMaxItems = 10;
 
-FIXPOINT getCurrentFPS() {
+FIXPOINT getCurrentFPS()
+{
 	return fpsArray[fpsItem];
 }
 
@@ -558,11 +598,11 @@ void calcFPS()
 void drawFPS(ScreenBuff *screenBuff)
 {
 	char fpsString[17];
-	#ifdef ARDUINO
+#ifdef ARDUINO
 	sprintf(fpsString, "%3.2f %d", currentFPS(), ESP.getFreeHeap());
-	#else
+#else
 	sprintf(fpsString, "%3.2f ms", currentFPS());
-	#endif
+#endif
 	drawString(screenBuff, fpsString, 0, screenBuff->HEIGHT - 8, true);
 }
 
@@ -600,15 +640,15 @@ int getElapsedSeconds()
 	return (int)(currentTime - startTime) / 1000;
 }
 
-void showLogo(const bool logo[],ScreenBuff *screenBuff)
+void showLogo(const bool logo[], ScreenBuff *screenBuff)
 {
-  Dimensions dim;
-  dim.height = logo_height;
-  dim.width = logo_width;
-  dim.x = 0;
-  dim.y = 0;
-  
-  displayClear(screenBuff,0,false);
-  drawObject(screenBuff, dim, logo);
-  initTime();
+	Dimensions dim;
+	dim.height = logo_height;
+	dim.width = logo_width;
+	dim.x = 0;
+	dim.y = 0;
+
+	displayClear(screenBuff, 0, false);
+	drawObject(screenBuff, dim, logo);
+	initTime();
 }

@@ -20,20 +20,20 @@ std::array<int,8> buttonRaw;
 
 void audioSetup()
 {
-  audioInit();
+  //audioInit();
 }
 
 void gameSetup()
 {
-  showLogo(logo_image, &screenBuff);
-  sendToScreen();
-  updateMinTime(2000);
+  //showLogo(logo_image, &screenBuff);
+  //sendToScreen();
+  //updateMinTime(100);
 }
 
 void gameLoop()
 {
 
-  audioLoop();
+ // audioLoop();
 
   // put your main code here, to run repeatedly:
   buttonVals = getReadShift();

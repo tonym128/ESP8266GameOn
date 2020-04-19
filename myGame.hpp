@@ -31,6 +31,7 @@ struct Player {
   Dimensions dim;
   FIXPOINT thrust,direction,size;
   FIXPOINT fixX,fixY, movX, movY;
+  FIXPOINT X,Y;
   double rotation;
   bool collision = 0;
   bool inPlay = true;

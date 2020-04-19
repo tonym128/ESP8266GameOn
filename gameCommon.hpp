@@ -46,8 +46,12 @@ struct ScreenBuff {
 struct Dimensions {
 	int x;
 	int y;
+	int endx;
+	int endy;
 	int width;
 	int height;
+	int screenx;
+	int screeny;
 };
 
 // Button definitions
@@ -76,6 +80,7 @@ void displayNoise(ScreenBuff*, Dimensions dim, int);
 
 // Draw methods
 void drawObject(ScreenBuff*, Dimensions, const bool*);
+void drawObjectPartial(ScreenBuff *screenBuff, Dimensions dim, bool *objectArray, bool backFill);
 void drawObjectWrap(ScreenBuff*, Dimensions, const bool*);
 void drawObject(ScreenBuff*, Dimensions, bool*, bool = true);
 void drawObjectFill(ScreenBuff*, Dimensions, const bool*, bool);
