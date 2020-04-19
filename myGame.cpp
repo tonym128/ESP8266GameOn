@@ -81,9 +81,28 @@ void processAttractMode(GameState *gameState, ScreenBuff *screenBuff)
 
 }
 
+int lastVal = 0;
+int getCarDir(GameState *gameState) {
+	if (gameState->p1keys.up) {
+		if (gameState->p1keys.left) lastVal =  7;
+		else if (gameState->p1keys.right) lastVal =  1;
+		else lastVal =  0;
+	}
+	else if (gameState->p1keys.down) {
+		if (gameState->p1keys.left) lastVal =  5;
+		else if (gameState->p1keys.right) lastVal =  3;
+		else lastVal =  4;
+	}
+	else if (gameState->p1keys.left) lastVal =  6;
+	else if (gameState->p1keys.right) lastVal =  2;
+
+	return lastVal;
+}
+
 void initAttractMode(GameState *gameState)
 {
-
+	gameState->player1.X = INT_TO_FIXP(60);
+	gameState->player1.Y = INT_TO_FIXP(20);
 }
 
 void updateAttractMode(GameState *gameState, ScreenBuff *screenBuff)
@@ -97,24 +116,24 @@ void displayAttractMode(GameState *gameState, ScreenBuff *screenBuff)
 	Dimensions map;
 	map.height = 128;
 	map.width = 256;
-	map.x = FIXP_TO_INT(gameState->player1.X);
-	map.y = FIXP_TO_INT(gameState->player1.Y);
-	map.endx = FIXP_TO_INT(gameState->player1.X) + 128;
-	map.endy = FIXP_TO_INT(gameState->player1.Y) + 64;
+	map.x = 0;
+	map.y = 0;
+	map.endx = map.x + 128;
+	map.endy = map.y + 64;
 	map.screenx = 0;
 	map.screeny = 0;
 
 	drawObjectPartial(screenBuff,map,(bool *)level1, true);
-
 	map.height = 8;
 	map.width = 64;
-	map.x = 8;
+	map.x = getCarDir(gameState)*8;
 	map.y = 0;
 	map.endx = map.x + 8;
 	map.endy = 8;
-	map.screenx = 60;
-	map.screeny = 20;
+	map.screenx = FIXP_TO_INT(gameState->player1.X);
+	map.screeny = FIXP_TO_INT(gameState->player1.Y);
 	drawObjectPartial(screenBuff,map,(bool *)car1, true);
+
 	if (getTimeInMillis() / 1000 % 2 == 0)
 	{
 		char startText[17] = "Press a button";
