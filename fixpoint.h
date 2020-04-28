@@ -1,14 +1,13 @@
 
 #ifdef _WIN32
 #include <stdint.h>
-#elif __EMSCRIPTEN__
-#include <stdint.h>
-typedef int byte;
 #elif __linux
 #include <stdint.h>
 typedef uint8_t byte;     // BYTE = unsigned 8 bit value
 #elif ARDUINO
 #include <Arduino.h>  // for type definitions
+#elif __EMSCRIPTEN__
+#include <stdint.h>
 #endif
 
 #define PI 3.14159265
@@ -50,7 +49,7 @@ const FIXPOINT SK[2] = {
 	FLOAT_TO_FIXP(1.6605e-01)
 };
 
-static inline FIXPOINT
+static FIXPOINT
 FIXPOINT_SIN(FIXPOINT fp)
 {
 	int sign = 1;
@@ -79,7 +78,7 @@ FIXPOINT_SIN(FIXPOINT fp)
 }
 
 /* Returns the cosine of the given fixedpt number */
-static inline FIXPOINT
+static FIXPOINT
 FIXPOINT_COS(FIXPOINT A)
 {
 	return (FIXPOINT_SIN(FIXEDPT_HALF_PI - A));
@@ -87,8 +86,101 @@ FIXPOINT_COS(FIXPOINT A)
 
 
 /* Returns the tangens of the given fixedpt number */
-static inline FIXPOINT
+static FIXPOINT
 FIXPOINT_TAN(FIXPOINT A)
 {
 	return FIXP_DIV(FIXPOINT_SIN(A), FIXPOINT_COS(A));
 }
+
+static FIXPOINT sqrtF2F ( FIXPOINT x )
+{
+    uint32_t t, q, b, r;
+    r = x;
+    b = 0x40000000;
+    q = 0;
+    while( b > 0x40 )
+    {
+        t = q + b;
+        if( r >= t )
+        {
+            r -= t;
+            q = t + b; // equivalent to q += 2*b
+        }
+        r <<= 1;
+        b >>= 1;
+    }
+    q >>= 8;
+    return q;
+}
+
+static FIXPOINT xVec(FIXPOINT speed, FIXPOINT direction)
+{
+
+	if (direction == INT_TO_FIXP(90))
+		return speed;
+	if (direction == INT_TO_FIXP(270))
+		return -speed;
+
+	if (direction == INT_TO_FIXP(0) || direction == INT_TO_FIXP(180))
+		return 0;
+	int sign = 1;
+
+	if (direction < INT_TO_FIXP(90))
+	{
+	}
+	else if (direction < INT_TO_FIXP(180))
+	{
+		direction = direction - INT_TO_FIXP(90);
+		direction = INT_TO_FIXP(90) - direction;
+	}
+	else if (direction < INT_TO_FIXP(270))
+	{
+		// X Value is -'ve
+		sign = -1;
+		direction = direction - INT_TO_FIXP(180);
+	}
+	else
+	{
+		// X Value is -'ve
+		direction = direction - INT_TO_FIXP(270);
+		direction = INT_TO_FIXP(90) - direction;
+		sign = -1;
+	}
+
+	return FIXP_MULT(speed * sign, FIXP_DIV(direction, INT_TO_FIXP(90)));
+}
+
+static FIXPOINT yVec(FIXPOINT speed, FIXPOINT direction)
+{
+	if (direction == INT_TO_FIXP(90) || direction == INT_TO_FIXP(270))
+		return 0;
+
+	if (direction == INT_TO_FIXP(0))
+		return -speed;
+	if (direction == INT_TO_FIXP(180))
+		return speed;
+	int sign = 1;
+
+	if (direction < INT_TO_FIXP(90))
+	{
+		direction = INT_TO_FIXP(90) - direction;
+		sign = -1;
+	}
+	else if (direction < INT_TO_FIXP(180))
+	{
+		direction = direction - INT_TO_FIXP(90);
+	}
+	else if (direction < INT_TO_FIXP(270))
+	{
+		direction = direction - INT_TO_FIXP(180);
+		direction = INT_TO_FIXP(90) - direction;
+	}
+	else
+	{
+		direction = direction - INT_TO_FIXP(270);
+		sign = -1;
+	}
+
+	return FIXP_MULT(speed * sign, FIXP_DIV(direction, INT_TO_FIXP(90)));
+}
+

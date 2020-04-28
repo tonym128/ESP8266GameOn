@@ -20,29 +20,15 @@ void processInput(GameState *gameState, byte buttonVals)
 	}
 }
 
-void resetGameState(GameState *gameState, ScreenBuff *screenBuff)
+void resetGameState(GameState *gameState)
 {
 	srand((unsigned int)time(0));
 	gameState->win = false;
 
-	gameState->player1.collision = false;
-	gameState->player1.inPlay = true;
-
 	gameState->score = 0;
 	gameState->level = 1;
 
-	gameState->player1.dim.width = 10;
-	gameState->player1.dim.height = 10;
-}
-
-void startLevel(GameState *gameState, ScreenBuff *screenBuff)
-{
-
-}
-
-void updateGame(GameState *gameState, ScreenBuff *screenBuff)
-{
-
+	gameState->player1.rotation = 4;
 }
 
 void displayGame(GameState *gameState, ScreenBuff *screenBuff)
@@ -58,43 +44,73 @@ void processAttractMode(GameState *gameState, ScreenBuff *screenBuff)
 		gameState->scene = 1;
 	}
 
-	if (gameState->p1keys.left) {
-		gameState->player1.X -= FLOAT_TO_FIXP(0.25);
-		if (FIXP_TO_INT(gameState->player1.X) < 0) gameState->player1.X = INT_TO_FIXP(0);
+	if (gameState->p1keys.left)
+	{
+		gameState->player1.rotation -= 0.1;
 	}
 
-	if (gameState->p1keys.right) {
-		gameState->player1.X += FLOAT_TO_FIXP(0.25);
-		if (FIXP_TO_INT(gameState->player1.X) > 256 - 128) gameState->player1.X = INT_TO_FIXP(256 - 128);
+	if (gameState->p1keys.right)
+	{
+		gameState->player1.rotation += 0.1;
 	}
 
-	if (gameState->p1keys.up) {
-		gameState->player1.Y -= FLOAT_TO_FIXP(0.25);
-		if (FIXP_TO_INT(gameState->player1.Y) < 0) gameState->player1.Y = INT_TO_FIXP(0);
+	if (gameState->player1.rotation < 0) gameState->player1.rotation = PI * 2;
+	if (gameState->player1.rotation > PI * 2) gameState->player1.rotation = 0;
+	//  Vector Movement
+	int frameMs = currentTime - frameTime;
+	if (frameMs == 0) frameMs = 1;
 
+	if (gameState->p1keys.up)
+	{
+		gameState->player1.acceleration.force += FLOAT_TO_FIXP(0.10 / frameMs);
 	}
 
-	if (gameState->p1keys.down) {
-		gameState->player1.Y += FLOAT_TO_FIXP(0.25);
-		if (FIXP_TO_INT(gameState->player1.Y) > 128 - 64) gameState->player1.Y = INT_TO_FIXP(128 - 64);
+	if (gameState->p1keys.down)
+	{
+		gameState->player1.acceleration.force -= FLOAT_TO_FIXP(0.04 / frameMs);
 	}
 
+	// Limits
+	if (gameState->player1.acceleration.force > INT_TO_FIXP(2))
+		gameState->player1.acceleration.force = INT_TO_FIXP(2);
+	else if (gameState->player1.acceleration.force < INT_TO_FIXP(-1))
+		gameState->player1.acceleration.force = INT_TO_FIXP(-1);
+
+	// Drag
+	if (gameState->player1.acceleration.force > INT_TO_FIXP(0))
+	{
+		gameState->player1.acceleration.force -= FLOAT_TO_FIXP(0.01 / frameMs);
+	}
+	else if (gameState->player1.acceleration.force < INT_TO_FIXP(0))
+	{
+		gameState->player1.acceleration.force += FLOAT_TO_FIXP(0.01 / frameMs);
+	}
+
+	if (gameState->player1.acceleration.force < FLOAT_TO_FIXP(0.01) && gameState->player1.acceleration.force > FLOAT_TO_FIXP(-0.01))
+		gameState->player1.acceleration.force = INT_TO_FIXP(0);
 }
 
 int lastVal = 0;
-int getCarDir(GameState *gameState) {
-	if (gameState->p1keys.up) {
-		if (gameState->p1keys.left) lastVal =  7;
-		else if (gameState->p1keys.right) lastVal =  1;
-		else lastVal =  0;
-	}
-	else if (gameState->p1keys.down) {
-		if (gameState->p1keys.left) lastVal =  5;
-		else if (gameState->p1keys.right) lastVal =  3;
-		else lastVal =  4;
-	}
-	else if (gameState->p1keys.left) lastVal =  6;
-	else if (gameState->p1keys.right) lastVal =  2;
+int getCarDir(GameState *gameState)
+{
+	if (gameState->player1.rotation < 1. / 8. * PI)
+		lastVal = 0;
+	else if (gameState->player1.rotation < 3. / 8. * PI)
+		lastVal = 1;
+	else if (gameState->player1.rotation < 5. / 8. * PI)
+		lastVal = 2;
+	else if (gameState->player1.rotation < 7. / 8. * PI)
+		lastVal = 3;
+	else if (gameState->player1.rotation < 9. / 8. * PI)
+		lastVal = 4;
+	else if (gameState->player1.rotation < 11. / 8. * PI)
+		lastVal = 5;
+	else if (gameState->player1.rotation < 13. / 8. * PI)
+		lastVal = 6;
+	else if (gameState->player1.rotation < 15. / 8. * PI)
+		lastVal = 7;
+	else
+		lastVal = 0;
 
 	return lastVal;
 }
@@ -103,48 +119,64 @@ void initAttractMode(GameState *gameState)
 {
 	gameState->player1.X = INT_TO_FIXP(60);
 	gameState->player1.Y = INT_TO_FIXP(20);
+	resetGameState(gameState);
 }
 
 void updateAttractMode(GameState *gameState, ScreenBuff *screenBuff)
 {
-
+	gameState->player1.acceleration.direction = FLOAT_TO_FIXP(gameState->player1.rotation * 57.2958);
+	gameState->player1.X += xVec(gameState->player1.acceleration.force, gameState->player1.acceleration.direction);
+	gameState->player1.Y += yVec(gameState->player1.acceleration.force, gameState->player1.acceleration.direction);
 }
 
 void displayAttractMode(GameState *gameState, ScreenBuff *screenBuff)
 {
 	// Alternate press button text on and off every second
-	Dimensions map;
-	map.height = 128;
-	map.width = 256;
-	map.x = 0;
-	map.y = 0;
-	map.endx = map.x + 128;
-	map.endy = map.y + 64;
-	map.screenx = 0;
-	map.screeny = 0;
+	Dimensions screenmap;
+	screenmap.height = 128;
+	screenmap.width = 256;
+	screenmap.x = FIXP_TO_INT(gameState->player1.X) - 64;
+	screenmap.y = FIXP_TO_INT(gameState->player1.Y) - 32;
+	if (screenmap.x < 0) screenmap.x = 0;
+	if (screenmap.x > screenmap.width - 128) screenmap.x = screenmap.width - 128;
 
-	drawObjectPartial(screenBuff,map,(bool *)level1, true);
+	if (screenmap.y < 0) screenmap.y = 0;
+	if (screenmap.y > screenmap.height - 64) screenmap.y = screenmap.height - 64;
+
+	screenmap.endx = screenmap.x + 128;
+	screenmap.endy = screenmap.y + 64;
+	screenmap.screenx = 0;
+	screenmap.screeny = 0;
+
+	drawObjectPartial(screenBuff, screenmap, (bool *)level1, true);
+
+	Dimensions map;
 	map.height = 8;
 	map.width = 64;
-	map.x = getCarDir(gameState)*8;
+	map.x = getCarDir(gameState) * 8;
 	map.y = 0;
 	map.endx = map.x + 8;
 	map.endy = 8;
-	map.screenx = FIXP_TO_INT(gameState->player1.X);
-	map.screeny = FIXP_TO_INT(gameState->player1.Y);
-	drawObjectPartial(screenBuff,map,(bool *)car1, true);
+	map.screenx = FIXP_TO_INT(gameState->player1.X) - screenmap.x;
+	map.screeny = FIXP_TO_INT(gameState->player1.Y) - screenmap.y;
+	drawObjectPartial(screenBuff, map, (bool *)car1, true);
 
-	if (getTimeInMillis() / 1000 % 2 == 0)
-	{
-		char startText[17] = "Press a button";
-		drawString(screenBuff, startText, 8, 38, false);
-		char startText2[17] = "to start";
-		drawString(screenBuff, startText2, 32, 45, false);
-	}
+	// map.screenx = FIXP_TO_INT(gameState->player1.X);
+	// map.screeny = FIXP_TO_INT(gameState->player1.Y) + 8;
+	// drawObjectPartial(screenBuff, map, (bool *)car2, true);
+
+	// if (getTimeInMillis() / 1000 % 2 == 0)
+	// {
+	// 	char startText[17] = "Press a button";
+	// 	drawString(screenBuff, startText, 8, 38, false);
+	// 	char startText2[17] = "to start";
+	// 	drawString(screenBuff, startText2, 32, 45, false);
+	// }
 
 	char hiScore[17];
-	sprintf(hiScore,"%d %d",FIXP_TO_INT(gameState->player1.X),FIXP_TO_INT(gameState->player1.Y));
+	sprintf(hiScore, "%d %d", FIXP_TO_INT(gameState->player1.X), FIXP_TO_INT(gameState->player1.Y));
 	drawString(screenBuff, hiScore, 0, 0, true);
+	//displayInvert(screenBuff);
 }
 
 bool myGameLoop(ScreenBuff *screenBuff, byte buttonVals)
@@ -157,11 +189,9 @@ bool myGameLoop(ScreenBuff *screenBuff, byte buttonVals)
 		if (gameState.lastscene != gameState.scene)
 		{
 			gameState.lastscene = gameState.scene;
-			//showLogo(mygame_image, screenBuff);
 		}
 		else
 		{
-			updateMinTime(100);
 			gameState.scene++;
 		}
 		break;
@@ -181,124 +211,12 @@ bool myGameLoop(ScreenBuff *screenBuff, byte buttonVals)
 		{
 			gameState.lastscene = gameState.scene;
 			gameState.frameCounter = 0;
-			resetGameState(&gameState, screenBuff);
+			resetGameState(&gameState);
 		}
 
 		gameState.scene = 4;
 
 		break;
-	case 3: // Asteroid!
-		if (gameState.lastscene != gameState.scene)
-		{
-			gameState.lastscene = gameState.scene;
-			if (gameState.level == 1)
-			{
-				resetGameState(&gameState, screenBuff);
-				startLevel(&gameState, screenBuff);
-			}
-		}
-
-		if (gameState.win)
-		{
-			if (gameState.level >= 10)
-			{
-				gameState.scene = 2;
-				gameState.win = false;
-			}
-			else
-			{
-				startLevel(&gameState, screenBuff);
-				gameState.scene = 4;
-			}
-			return false;
-		}
-		updateGame(&gameState, screenBuff);
-		displayGame(&gameState, screenBuff);
-		break;
-	case 2: // Outro
-		if (gameState.lastscene != gameState.scene)
-		{
-			gameState.lastscene = gameState.scene;
-			gameState.frameCounter = 0;
-		}
-
-		gameState.scene = 0;
-		gameState.win = false;
-		return false;
-
-		break;
-	case 5: // Game Over
-	{
-		if (gameState.lastscene != gameState.scene)
-		{
-			gameState.frameCounter = 0;
-			gameState.lastscene = gameState.scene;
-		}
-
-		if (gameState.frameCounter == 100)
-		{
-			gameState.scene = 0;
-		}
-
-		char gameOver[16];
-		sprintf(gameOver, "Game Over");
-		for (int i = 0; i < static_cast<int>(strlen(gameOver)); i++)
-		{
-			drawCharacter(screenBuff, gameOver[i], 40 + 8 * i, 25);
-		}
-
-		// Sliders
-		int cnt = 0;
-		for (int i = gameState.frameCounter; i > 0; i--)
-		{
-			if (cnt < screenBuff->WIDTH / 2)
-			{
-				cnt++;
-				screenBuff->consoleBuffer[screenBuff->WIDTH * 20 + i] = 1;
-				screenBuff->consoleBuffer[screenBuff->WIDTH * 35 - i] = 1;
-			}
-		}
-
-		gameState.frameCounter++;
-	}
-	break;
-	case 4: // Level Slider
-	{
-		if (gameState.lastscene != gameState.scene)
-		{
-			gameState.frameCounter = 0;
-			gameState.lastscene = gameState.scene;
-			displayClear(screenBuff, 0, false);
-		}
-
-		if (gameState.frameCounter == 100)
-		{
-			gameState.scene = 3;
-		}
-
-		displayClear(screenBuff, 0, false);
-
-		char fps[16];
-		sprintf(fps, "Level %i", gameState.level);
-		for (int i = 0; i < static_cast<int>(strlen(fps)); i++)
-		{
-			drawCharacter(screenBuff, fps[i], 40 + 8 * i, 25);
-		}
-
-		// Sliders
-		int counter = 0;
-		for (int i = gameState.frameCounter; i > 0; i--)
-		{
-			if (counter < screenBuff->WIDTH / 2)
-			{
-				counter++;
-				screenBuff->consoleBuffer[screenBuff->WIDTH * 20 + i] = 1;
-				screenBuff->consoleBuffer[screenBuff->WIDTH * 35 - i] = 1;
-			}
-		}
-		gameState.frameCounter++;
-	}
-	break;
 	}
 
 	return false;

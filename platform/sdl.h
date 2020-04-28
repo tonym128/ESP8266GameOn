@@ -80,6 +80,9 @@ void sendToScreen()
 		{
 		SDL_SetRenderDrawColor(renderer, 255, 255, 255, 0);
 		SDL_RenderDrawPoint(renderer, x * 4, y * 4);
+		SDL_RenderDrawPoint(renderer, x * 4 + 1, y * 4 + 1);
+		SDL_RenderDrawPoint(renderer, x * 4 , y * 4 + 1);
+		SDL_RenderDrawPoint(renderer, x * 4 + 1 , y * 4);
 		}
 	}
 	SDL_RenderPresent(renderer);
