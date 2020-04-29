@@ -81,6 +81,9 @@ void displayNoise(ScreenBuff*, Dimensions dim, int);
 // Draw methods
 void drawObject(ScreenBuff*, Dimensions, const bool*);
 void drawObjectPartial(ScreenBuff *screenBuff, Dimensions dim, bool *objectArray, bool backFill);
+void drawObjectPartialDouble(ScreenBuff *screenBuff, Dimensions dim, bool *objectArray, bool backFill);
+void drawObjectPartialQuad(ScreenBuff *screenBuff, Dimensions dim, bool *objectArray, bool backFill);
+void drawObjectPartialTriple(ScreenBuff *screenBuff, Dimensions dim, bool *objectArray, bool backFill);
 void drawObjectWrap(ScreenBuff*, Dimensions, const bool*);
 void drawObject(ScreenBuff*, Dimensions, bool*, bool = true);
 void drawObjectFill(ScreenBuff*, Dimensions, const bool*, bool);

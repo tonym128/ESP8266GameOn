@@ -310,6 +310,75 @@ void drawObjectPartial(ScreenBuff *screenBuff, Dimensions dim, bool *objectArray
 	}
 }
 
+void drawObjectPartialDouble(ScreenBuff *screenBuff, Dimensions dim, bool *objectArray, bool backFill)
+{
+	int x = dim.screenx;
+	int y = dim.screeny;
+	for (int j = dim.y; j < dim.endy; j++)
+	{
+		x = dim.screenx;
+		for (int i = dim.x; i < dim.endx; i++)
+		{
+			int pixel = x + screenBuff->WIDTH * y;
+			if (pixel >= 0 && pixel < screenBuff->MAXPIXEL)
+			{
+				if (objectArray[i/2 + j/2 * dim.width])
+					screenBuff->consoleBuffer[pixel] = 1;
+				else if (backFill)
+					screenBuff->consoleBuffer[pixel] = 0;
+			}
+			x++;
+		}
+		y++;
+	}
+}
+
+void drawObjectPartialTriple(ScreenBuff *screenBuff, Dimensions dim, bool *objectArray, bool backFill)
+{
+	int x = dim.screenx;
+	int y = dim.screeny;
+	for (int j = dim.y; j < dim.endy; j++)
+	{
+		x = dim.screenx;
+		for (int i = dim.x; i < dim.endx; i++)
+		{
+			int pixel = x + screenBuff->WIDTH * y;
+			if (pixel >= 0 && pixel < screenBuff->MAXPIXEL)
+			{
+				if (objectArray[i/3 + j/3 * dim.width])
+					screenBuff->consoleBuffer[pixel] = 1;
+				else if (backFill)
+					screenBuff->consoleBuffer[pixel] = 0;
+			}
+			x++;
+		}
+		y++;
+	}
+}
+
+void drawObjectPartialQuad(ScreenBuff *screenBuff, Dimensions dim, bool *objectArray, bool backFill)
+{
+	int x = dim.screenx;
+	int y = dim.screeny;
+	for (int j = dim.y; j < dim.endy; j++)
+	{
+		x = dim.screenx;
+		for (int i = dim.x; i < dim.endx; i++)
+		{
+			int pixel = x + screenBuff->WIDTH * y;
+			if (pixel >= 0 && pixel < screenBuff->MAXPIXEL)
+			{
+				if (objectArray[i/4 + j/4 * dim.width])
+					screenBuff->consoleBuffer[pixel] = 1;
+				else if (backFill)
+					screenBuff->consoleBuffer[pixel] = 0;
+			}
+			x++;
+		}
+		y++;
+	}
+}
+
 void drawVertLine(ScreenBuff *screenBuff, int x, int y, int length, bool colour, int pattern)
 {
 	if (x < 0 || x > screenBuff->WIDTH)

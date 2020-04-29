@@ -36,7 +36,10 @@ struct GameState {
   int scene = -1;
   int lastscene = -99;
   int frameCounter = 0;
-
+  int laptimes[5];
+  bool laptimer;
+  bool startCross;
+  int curlap;
   Player1Keys p1keys;
   Player player1;
 
