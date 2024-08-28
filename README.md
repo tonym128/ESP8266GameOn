@@ -1,7 +1,7 @@
 # ESP8266GameOn
 Gaming on an ESP8266 with SSD1306 and buttons.
 
-See the blog post about it here - https://ttech.mamacos.media/2019/04/21/building-your-own-game-console/
+See the blog post about it here - https://tonym128.github.io/2019/04/21/building-your-own-game-console/
 
 Hardware was originally inspired by the BSides Cape Town 2016 Badge and original source code is here 
 
